@@ -1,0 +1,5 @@
+class CreateGoudaTables < ActiveRecord::Migration<%= migration_version %>
+  def change
+    Gouda.create_tables(self)
+  end
+end
