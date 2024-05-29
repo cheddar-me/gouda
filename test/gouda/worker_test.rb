@@ -43,7 +43,6 @@ class GoudaWorkerTest < ActiveSupport::TestCase
   end
 
   test "runs workloads from all queues without a queue constraint" do
-    skip
     # slow_test!
 
     Gouda.in_bulk do
@@ -78,7 +77,6 @@ class GoudaWorkerTest < ActiveSupport::TestCase
   end
 
   test "reaps zombie workloads and then executes replacements" do
-    skip
     # slow_test!
 
     past = 10.minutes.ago

@@ -12,7 +12,6 @@ require "support/assert_helper"
 require "gouda"
 
 class ActiveSupport::TestCase
-
   SEED_DB_NAME = -> { "gouda_tests_%s" % Random.new(Minitest.seed).hex(4) }
 
   def self.adapter
@@ -29,7 +28,6 @@ class ActiveSupport::TestCase
   teardown do
     truncate_test_tables
   end
-
 
   def create_postgres_database_if_none
     ActiveRecord::Base.establish_connection(adapter: "postgresql", encoding: "unicode", database: SEED_DB_NAME.call)

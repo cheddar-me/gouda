@@ -2,8 +2,6 @@
 
 module Gouda
   class Railtie < Rails::Railtie
-    # isolate_namespace Gouda
-
     rake_tasks do
       task preload: :setup do
         if defined?(Rails) && Rails.respond_to?(:application)
@@ -16,22 +14,18 @@ module Gouda
     end
 
     initializer "gouda.configure_rails_initialization" do
-      Gouda.app_executor_wrapper = if defined?(Rails) && Rails.respond_to?(:application)
-        Gouda.rails_wrapper
+      Gouda.app_executor = if defined?(Rails) && Rails.respond_to?(:application)
+        Rails.application.executor
       else
-        Gouda.basic_wrapper
+        ActiveSupport::Executor
       end
     end
 
-    initializer "gouda.rails_init" do
-      ActiveJob::Base.include(Gouda::ActiveJobExtensions::Interrupts)
+    initializer "gouda.active_job.extensions" do
+      ActiveSupport.on_load :active_job do
+        include Gouda::ActiveJobExtensions::Interrupts
+      end
     end
-    # initializer "gouda.active_job.extensions" do
-    #   ActiveSupport.on_load :active_job do
-    #     include Gouda::ActiveJobExtensions::Interrupts
-    #     include Gouda::ActiveJobExtensions::Concurrency
-    #   end
-    # end
 
     # The `to_prepare` block which is executed once in production
     # and before each request in development.

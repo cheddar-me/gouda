@@ -24,9 +24,7 @@ module Gouda
   mattr_accessor :polling_sleep_interval_seconds, default: 5.0
   mattr_accessor :worker_thread_count, default: 1
   mattr_accessor :logger, default: ActiveSupport::Logger.new($stdout)
-  mattr_accessor :app_executor_wrapper, :on_thread_error
-
-  Time.zone = "Europe/Amsterdam"
+  mattr_accessor :app_executor
 
   class InterruptError < StandardError
   end
@@ -44,19 +42,6 @@ module Gouda
     end
 
     Gouda.worker_loop(n_threads: worker_thread_count, queue_constraint:)
-  end
-
-  def self.rails_wrapper
-    Rails.application.executor.wrap do
-      yield if block_given?
-    end
-  rescue e
-    raise e
-  end
-
-  def self.basic_wrapper
-    # puts "BLOCK!!:", blk
-    yield if block_given?
   end
 
   def self.create_tables(active_record_schema)

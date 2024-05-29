@@ -62,9 +62,11 @@ class Gouda::Workload < ActiveRecord::Base
           # with_lock will start its own transaction
           workload.with_lock("FOR UPDATE SKIP LOCKED") do
             Gouda.logger.info { "Reviving (re-enqueueing) Gouda workload #{workload.id} after interruption" }
-            Appsignal.increment_counter("gouda_workloads_revived", 1, job_class: workload.active_job_class_name)
+
+            # Appsignal.increment_counter("gouda_workloads_revived", 1, job_class: workload.active_job_class_name)
+
             interrupted_at = workload.last_execution_heartbeat_at
-            workload.update!(state: "finished", interrupted_at:, last_execution_heartbeat_at: Time.now.utc, execution_finished_at: Time.zone.now)
+            workload.update!(state: "finished", interrupted_at:, last_execution_heartbeat_at: Time.now.utc, execution_finished_at: Time.now.utc)
             revived_job = ActiveJob::Base.deserialize(workload.active_job_data)
             # Save the interrupted_at timestamp so that upon execution the new job will raise a Gouda::Interrpupted exception.
             # The exception can then be handled like any other ActiveJob exception (using rescue_from or similar).

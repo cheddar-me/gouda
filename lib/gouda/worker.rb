@@ -84,9 +84,9 @@ module Gouda
     def call
       # return false unless Rails.application # Rails is still booting and there is no application defined
 
-      # Gouda.app_executor_wrapper do
-      Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none?
-      # end
+      Gouda.app_executor.wrap do
+        Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none?
+      end
     rescue # If the DB connection cannot be checked out etc
       false
     end
@@ -132,9 +132,9 @@ module Gouda
         loop do
           break if check_shutdown.call
 
-          # did_process = Gouda.app_executor_wrapper do
-          did_process = Gouda::Workload.checkout_and_perform_one(executing_on: worker_id_and_thread_id, queue_constraint:, in_progress: executing_workload_ids)
-          # end
+          did_process = Gouda.app_executor.wrap do
+            Gouda::Workload.checkout_and_perform_one(executing_on: worker_id_and_thread_id, queue_constraint:, in_progress: executing_workload_ids)
+          end
 
           # If no job was retrieved the queue is likely empty. Relax the polling then and ease off.
           # If a job was retrieved it is likely that a burst has just been enqueued, and we do not
@@ -151,19 +151,21 @@ module Gouda
     loop do
       break if check_shutdown.call
 
-      # Gouda.app_executor_wrapper do
-      # Mark known executing jobs as such. If a worker process is killed or the machine it is running on dies,
-      # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
-      # even though the worker it was running on has failed for whatever reason.
-      # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
-      Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
+      Gouda.app_executor.wrap do
+        # Mark known executing jobs as such. If a worker process is killed or the machine it is running on dies,
+        # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
+        # even though the worker it was running on has failed for whatever reason.
+        # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
+        Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
 
-      # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
-      Gouda::Workload.reap_zombie_workloads
-    rescue => e
-      Appsignal.add_exception(e)
-      warn "Uncaught exception during housekeeping (#{e.class} - #{e}"
-      # end
+        # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
+        Gouda::Workload.reap_zombie_workloads
+      rescue => e
+
+        # Appsignal.add_exception(e)
+
+        warn "Uncaught exception during housekeeping (#{e.class} - #{e}"
+      end
 
       # Jitter the sleep so that the workers booted at the same time do not all dogpile
       randomized_sleep_duration_s = POLL_INTERVAL_DURATION_SECONDS + (POLL_INTERVAL_DURATION_SECONDS.to_f * rand)
