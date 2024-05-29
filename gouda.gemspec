@@ -1,7 +1,7 @@
 require_relative "lib/gouda/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "Gouda"
+  spec.name = "gouda"
   spec.version = Gouda::VERSION
   spec.summary = "Job Scheduler"
   spec.description = "Job Scheduler for Cheddar"
