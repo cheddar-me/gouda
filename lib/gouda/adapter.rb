@@ -34,7 +34,7 @@ class Gouda::Adapter
   # @param timestamp [Integer, nil] the epoch time to perform the job
   # @return [String, nil] the ID of the inserted Gouda or nil if the insert did not go through (due to concurrency)
   def enqueue_at(active_job, timestamp_int)
-    active_job.scheduled_at = Time.zone.at(timestamp_int)
+    active_job.scheduled_at = Time.at(timestamp_int).utc
     enqueue_all([active_job])
     if active_job.enqueue_error
       Gouda.logger.warn { "Error #{active_job.enqueue_error.inspect} for Gouda workload (#{active_job.job_id})" }

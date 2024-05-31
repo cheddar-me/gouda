@@ -18,7 +18,7 @@ module Gouda::Scheduler
       elsif cron
         fugit = Fugit::Cron.parse(cron)
         raise ArgumentError, "Unable to parse cron pattern #{cron.inspect}" unless fugit
-        Time.zone.at(fugit.next_time.to_i)
+        Time.at(fugit.next_time.to_i).utc
       end
     end
 

@@ -29,7 +29,7 @@ module Gouda
 
     # The `to_prepare` block which is executed once in production
     # and before each request in development.
-    config.to_prepare do
+    config.after_initialize do
       config_from_rails = Rails.application.config.try(:gouda)
       if config_from_rails
         Gouda::Scheduler.update_schedule_from_config!
@@ -37,6 +37,9 @@ module Gouda
         Gouda.preserve_job_records = config_from_rails[:preserve_job_records]
         Gouda.polling_sleep_interval_seconds = config_from_rails[:polling_sleep_interval_seconds]
         Gouda.worker_thread_count = config_from_rails[:worker_thread_count]
+      else
+        Gouda.preserve_job_records = false
+        Gouda.polling_sleep_interval_seconds = 0.2
       end
     end
   end

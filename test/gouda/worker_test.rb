@@ -43,8 +43,6 @@ class GoudaWorkerTest < ActiveSupport::TestCase
   end
 
   test "runs workloads from all queues without a queue constraint" do
-    # slow_test!
-
     Gouda.in_bulk do
       6.times { SimpleJob.perform_later }
       6.times { SimpleJob.set(queue: "urgent").perform_later }
@@ -77,8 +75,6 @@ class GoudaWorkerTest < ActiveSupport::TestCase
   end
 
   test "reaps zombie workloads and then executes replacements" do
-    # slow_test!
-
     past = 10.minutes.ago
     2.times do
       zombie_job = JobWithEnqueueKey.new

@@ -4,11 +4,12 @@ require "gouda/test_helper"
 
 class GoudaSchedulerTest < ActiveSupport::TestCase
   include AssertHelper
-  # self.use_transactional_tests = false
 
   setup do
     @adapter ||= Gouda::Adapter.new
     Gouda::Railtie.initializers.each(&:run)
+    Gouda::Workload.delete_all
+    Gouda::JobFuse.delete_all
   end
 
   class TestJob < ActiveJob::Base
@@ -19,24 +20,21 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
   end
 
   class FailingJob < ActiveJob::Base
+    include Gouda::ActiveJobExtensions::Concurrency
     self.queue_adapter = Gouda::Adapter.new
 
     class MegaError < StandardError
     end
 
-    include Gouda::ActiveJobExtensions::Concurrency
     gouda_control_concurrency_with(enqueue_limit: 1, key: -> { self.class.to_s })
 
+    retry_on StandardError, wait: :exponentially_longer, attempts: 5
+    retry_on Gouda::InterruptError, wait: 0, attempts: 5
     retry_on MegaError, attempts: 3, wait: 0
 
     def perform
       raise MegaError.new "Kaboom!"
     end
-  end
-
-  setup do
-    Gouda::Workload.delete_all
-    Gouda::JobFuse.delete_all
   end
 
   test "keeps re-enqueueing cron jobs after failed job (also with kwargs)" do
@@ -53,7 +51,7 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     end
 
     assert_equal 1, Gouda::Workload.enqueued.count
-    Gouda.worker_loop(n_threads: 1, check_shutdown: Gouda::TimerShutdownCheck.new(3))
+    Gouda.worker_loop(n_threads: 1, check_shutdown: Gouda::TimerShutdownCheck.new(2))
 
     refute_empty Gouda::Workload.enqueued
     assert Gouda::Workload.count > 3

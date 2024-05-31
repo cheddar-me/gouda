@@ -4,8 +4,8 @@ Gem::Specification.new do |spec|
   spec.name = "gouda"
   spec.version = Gouda::VERSION
   spec.summary = "Job Scheduler"
-  spec.description = "Job Scheduler for Cheddar"
-  spec.authors = ["Sebastian van Hesteren"]
+  spec.description = "Job Scheduler for Rails"
+  spec.authors = ["Sebastian van Hesteren", "Julik"]
   spec.email = "sebastian@cheddar.me"
   spec.homepage = "https://rubygems.org/gems/gouda"
   spec.license = "MIT"
@@ -27,4 +27,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "fugit", "~> 1.10.1"
 
   spec.add_development_dependency "pg"
+  spec.add_development_dependency "debug"
+  spec.add_development_dependency "pry"
 end

@@ -21,7 +21,7 @@ module Gouda
 
   mattr_accessor :preserve_job_records, default: false
   mattr_accessor :cleanup_preserved_jobs_before, default: 3.hours
-  mattr_accessor :polling_sleep_interval_seconds, default: 5.0
+  mattr_accessor :polling_sleep_interval_seconds, default: 0.2
   mattr_accessor :worker_thread_count, default: 1
   mattr_accessor :logger, default: ActiveSupport::Logger.new($stdout)
   mattr_accessor :app_executor

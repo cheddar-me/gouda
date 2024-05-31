@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+require "debug"
 require "active_record"
 require "active_job"
-# require "active_support"
-# require "active_support/core_ext/numeric/time"
 require "active_support/test_case"
 require "minitest/autorun"
 require "minitest"
@@ -66,5 +65,3 @@ class ActiveSupport::TestCase
     end
   end
 end
-
-# Load fixtures from the engine
