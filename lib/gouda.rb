@@ -2,6 +2,7 @@
 
 require "active_support"
 require "active_support/core_ext/numeric/time"
+require "active_support/configurable"
 require "rails/railtie"
 require_relative "gouda/bulk"
 require_relative "gouda/adapter"
@@ -16,15 +17,25 @@ require_relative "gouda/active_job_extensions/concurrency"
 require_relative "active_job/queue_adapters/gouda_adapter"
 
 module Gouda
+  class Gouda::Configuration
+    include ActiveSupport::Configurable
+
+    config_accessor(:preserve_job_records, default: false)
+    config_accessor(:cleanup_preserved_jobs_before, default: 3.hours)
+    config_accessor(:polling_sleep_interval_seconds, default: 0.2)
+    config_accessor(:worker_thread_count, default: 1)
+    config_accessor(:logger, default: ActiveSupport::Logger.new($stdout))
+    config_accessor(:app_executor)
+  end
   # The Workload inherits from ActiveRecord::Base but it is not loaded yet when
   # we load this lib (from application.rb). We can late-initialize it though.
 
-  mattr_accessor :preserve_job_records, default: false
-  mattr_accessor :cleanup_preserved_jobs_before, default: 3.hours
-  mattr_accessor :polling_sleep_interval_seconds, default: 0.2
-  mattr_accessor :worker_thread_count, default: 1
-  mattr_accessor :logger, default: ActiveSupport::Logger.new($stdout)
-  mattr_accessor :app_executor
+  # mattr_accessor :preserve_job_records, default: false
+  # mattr_accessor :cleanup_preserved_jobs_before, default: 3.hours
+  # mattr_accessor :polling_sleep_interval_seconds, default: 0.2
+  # mattr_accessor :worker_thread_count, default: 1
+  # mattr_accessor :logger, default: ActiveSupport::Logger.new($stdout)
+  # mattr_accessor :app_executor
 
   class InterruptError < StandardError
   end
@@ -41,7 +52,19 @@ module Gouda
       Gouda::AnyQueue
     end
 
-    Gouda.worker_loop(n_threads: worker_thread_count, queue_constraint:)
+    Gouda.worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint:)
+  end
+
+  def self.config
+    @config ||= Configuration.new
+  end
+
+  def self.configure
+    yield config
+  end
+
+  def self.logger
+    Gouda.config.logger
   end
 
   def self.create_tables(active_record_schema)

@@ -493,7 +493,7 @@ class GoudaTest < ActiveSupport::TestCase
         StandardJob.perform_later
       end
     end
-    Gouda.preserve_job_records = false
+    Gouda.config.preserve_job_records = false
     Gouda::Workload.update_all(execution_finished_at: 3.days.ago, state: "finished")
 
     Gouda.in_bulk do

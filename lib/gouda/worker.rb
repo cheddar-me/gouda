@@ -84,7 +84,7 @@ module Gouda
     def call
       # return false unless Rails.application # Rails is still booting and there is no application defined
 
-      Gouda.app_executor.wrap do
+      Gouda.config.app_executor.wrap do
         Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none?
       end
     rescue # If the DB connection cannot be checked out etc
@@ -132,7 +132,7 @@ module Gouda
         loop do
           break if check_shutdown.call
 
-          did_process = Gouda.app_executor.wrap do
+          did_process = Gouda.config.app_executor.wrap do
             Gouda::Workload.checkout_and_perform_one(executing_on: worker_id_and_thread_id, queue_constraint:, in_progress: executing_workload_ids)
           end
 
@@ -151,7 +151,7 @@ module Gouda
     loop do
       break if check_shutdown.call
 
-      Gouda.app_executor.wrap do
+      Gouda.config.app_executor.wrap do
         # Mark known executing jobs as such. If a worker process is killed or the machine it is running on dies,
         # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
         # even though the worker it was running on has failed for whatever reason.
@@ -176,7 +176,7 @@ module Gouda
   def self.sleep_with_interruptions(n_seconds, must_abort_proc)
     start_time_seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     # remaining_seconds = n_seconds
-    check_interval_seconds = Gouda.polling_sleep_interval_seconds
+    check_interval_seconds = Gouda.config.polling_sleep_interval_seconds
     loop do
       return if must_abort_proc.call
       return if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time_seconds >= n_seconds
