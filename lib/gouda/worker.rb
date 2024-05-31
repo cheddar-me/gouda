@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "securerandom"
+require "gouda/version"
 
 module Gouda
   POLL_INTERVAL_DURATION_SECONDS = 1
@@ -123,6 +124,9 @@ module Gouda
     check_shutdown = CombinedShutdownCheck.new(*check_shutdown) if !check_shutdown.respond_to?(:call) && check_shutdown.is_a?(Array)
 
     worker_id = [Socket.gethostname, Process.pid, SecureRandom.uuid].join("-")
+
+    Gouda.logger.info("Starting Gouda worker: #{worker_id}")
+
     executing_workload_ids = ThreadSafeSet.new
 
     raise ArgumentError, "You need at least 1 worker thread, but you requested #{n_threads}" if n_threads < 1

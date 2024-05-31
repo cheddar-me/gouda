@@ -29,18 +29,25 @@ module Gouda
 
     # The `to_prepare` block which is executed once in production
     # and before each request in development.
-    # config.after_initialize do
-    #   config_from_rails = Rails.application.config.try(:gouda)
-    #   if config_from_rails
-    #     Gouda::Scheduler.update_schedule_from_config!
-    #     Gouda.cleanup_preserved_jobs_before = config_from_rails[:cleanup_preserved_jobs_before]
-    #     Gouda.preserve_job_records = config_from_rails[:preserve_job_records]
-    #     Gouda.polling_sleep_interval_seconds = config_from_rails[:polling_sleep_interval_seconds]
-    #     Gouda.worker_thread_count = config_from_rails[:worker_thread_count]
-    #   else
-    #     Gouda.preserve_job_records = false
-    #     Gouda.polling_sleep_interval_seconds = 0.2
-    #   end
-    # end
+    config.to_prepare do
+      Gouda::Scheduler.update_schedule_from_config!
+
+      if defined?(Rails) && Rails.respond_to?(:application)
+        config_from_rails = Rails.application.config.try(:gouda)
+        if config_from_rails
+          Gouda.config.cleanup_preserved_jobs_before = config_from_rails[:cleanup_preserved_jobs_before]
+          Gouda.config.preserve_job_records = config_from_rails[:preserve_job_records]
+          Gouda.config.polling_sleep_interval_seconds = config_from_rails[:polling_sleep_interval_seconds]
+          Gouda.config.worker_thread_count = config_from_rails[:worker_thread_count]
+          if Gouda.config.logger
+            Gouda.config.logger.level = config_from_rails[:log_level] || Gouda.config.log_level
+          end
+        end
+      else
+        Gouda.config.preserve_job_records = false
+        Gouda.config.polling_sleep_interval_seconds = 0.2
+        Gouda.config.logger.level = Gouda.config.log_level
+      end
+    end
   end
 end

@@ -26,16 +26,18 @@ module Gouda
     config_accessor(:worker_thread_count, default: 1)
     config_accessor(:logger, default: ActiveSupport::Logger.new($stdout))
     config_accessor(:app_executor)
+    config_accessor(:cron, default: {})
+    config_accessor(:enable_cron, default: true)
+    # Log levels are:
+    # constant    |   level
+    # Logger::DEBUG   (0)
+    # Logger::INFO    (1)
+    # Logger::WARN    (2)
+    # Logger::ERROR   (3)
+    # Logger::FATAL   (4)
+    # Logger::UNKNOWN (5)
+    config_accessor(:log_level, default: Logger::DEBUG)
   end
-  # The Workload inherits from ActiveRecord::Base but it is not loaded yet when
-  # we load this lib (from application.rb). We can late-initialize it though.
-
-  # mattr_accessor :preserve_job_records, default: false
-  # mattr_accessor :cleanup_preserved_jobs_before, default: 3.hours
-  # mattr_accessor :polling_sleep_interval_seconds, default: 0.2
-  # mattr_accessor :worker_thread_count, default: 1
-  # mattr_accessor :logger, default: ActiveSupport::Logger.new($stdout)
-  # mattr_accessor :app_executor
 
   class InterruptError < StandardError
   end
@@ -51,6 +53,9 @@ module Gouda
     else
       Gouda::AnyQueue
     end
+
+    Gouda.logger.info("Gouda version: #{Gouda::VERSION}")
+    Gouda.logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
 
     Gouda.worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint:)
   end

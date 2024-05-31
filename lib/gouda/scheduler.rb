@@ -57,7 +57,13 @@ module Gouda::Scheduler
     Gouda.logger.info "Updating scheduled workload entries..."
     if cron_table_hash.blank?
       config_from_rails = Rails.application.config.try(:gouda)
-      cron_table_hash = config_from_rails.dig(:cron).to_h if config_from_rails.dig(:enable_cron)
+
+      cron_table_hash = if config_from_rails.present?
+        config_from_rails.dig(:cron).to_h if config_from_rails.dig(:enable_cron)
+      elsif Gouda.config.enable_cron
+        Gouda.config.cron
+      end
+
       return unless cron_table_hash
     end
 
