@@ -37,11 +37,6 @@ class GoudaWorkerTest < ActiveSupport::TestCase
     end
   end
 
-  setup do
-    @adapter ||= Gouda::Adapter.new
-    Gouda::Railtie.initializers.each(&:run)
-  end
-
   test "runs workloads from all queues without a queue constraint" do
     Gouda.in_bulk do
       6.times { SimpleJob.perform_later }

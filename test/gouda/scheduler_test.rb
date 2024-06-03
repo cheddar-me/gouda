@@ -6,8 +6,6 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
   include AssertHelper
 
   setup do
-    @adapter ||= Gouda::Adapter.new
-    Gouda::Railtie.initializers.each(&:run)
     Gouda::Workload.delete_all
     Gouda::JobFuse.delete_all
   end

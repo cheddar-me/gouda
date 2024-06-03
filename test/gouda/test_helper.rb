@@ -10,29 +10,23 @@ require "minitest"
 require "support/assert_helper"
 require "gouda"
 
-begin
-  ActiveRecord::Migration.maintain_test_schema!
-rescue ActiveRecord::PendingMigrationError => e
-  puts e.to_s.strip
-  exit 1
-end
-
 class ActiveSupport::TestCase
   SEED_DB_NAME = -> { "gouda_tests_%s" % Random.new(Minitest.seed).hex(4) }
 
   def self.adapter
-    @adapter || Gouda::Adapter.new
   end
 
   attr_reader :case_random
 
   setup do
-    # create_postgres_database_if_none
+    create_postgres_database_if_none
+    @adapter || Gouda::Adapter.new
     @case_random = Random.new(Minitest.seed)
+    Gouda::Railtie.initializers.each(&:run)
   end
 
   teardown do
-    # truncate_test_tables
+    truncate_test_tables
   end
 
   def create_postgres_database_if_none

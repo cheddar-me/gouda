@@ -12,11 +12,6 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
     end
   end
 
-  setup do
-    @adapter ||= Gouda::Adapter.new
-    Gouda::Railtie.initializers.each(&:run)
-  end
-
   test "#schedule_now!" do
     freeze_time
     create_enqueued_workload

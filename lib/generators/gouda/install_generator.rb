@@ -1,4 +1,4 @@
-# # frozen_string_literal: true
+# frozen_string_literal: true
 
 require "rails/generators"
 require "rails/generators/active_record"
@@ -13,12 +13,11 @@ module Gouda
     TEMPLATES = File.join(File.dirname(__FILE__), "templates/install")
     source_paths << TEMPLATES
 
-    # class_option :database, type: :string, aliases: %i(--db), desc: "The database for your migration. By default, the current environment's primary database is used."
+    class_option :database, type: :string, aliases: %i[--db], desc: "The database for your migration. By default, the current environment's primary database is used."
 
     # Generates monolithic migration file that contains all database changes.
     def create_migration_file
-      migration_template "migrations/create_gouda_workloads.rb.erb", File.join(db_migrate_path, "create_gouda_workloads.rb")
-      migration_template "migrations/create_gouda_job_fuses.rb.erb", File.join(db_migrate_path, "create_gouda_job_fuses.rb")
+      migration_template "migrations/create_gouda_tables.rb.erb", File.join(db_migrate_path, "create_gouda_tables.rb")
     end
 
     private
