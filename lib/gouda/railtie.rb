@@ -27,6 +27,10 @@ module Gouda
       end
     end
 
+    generators do
+      require "generators/gouda/install_generator"
+    end
+
     # The `to_prepare` block which is executed once in production
     # and before each request in development.
     config.to_prepare do

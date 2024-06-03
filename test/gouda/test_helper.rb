@@ -10,6 +10,13 @@ require "minitest"
 require "support/assert_helper"
 require "gouda"
 
+begin
+  ActiveRecord::Migration.maintain_test_schema!
+rescue ActiveRecord::PendingMigrationError => e
+  puts e.to_s.strip
+  exit 1
+end
+
 class ActiveSupport::TestCase
   SEED_DB_NAME = -> { "gouda_tests_%s" % Random.new(Minitest.seed).hex(4) }
 
@@ -20,12 +27,12 @@ class ActiveSupport::TestCase
   attr_reader :case_random
 
   setup do
-    create_postgres_database_if_none
+    # create_postgres_database_if_none
     @case_random = Random.new(Minitest.seed)
   end
 
   teardown do
-    truncate_test_tables
+    # truncate_test_tables
   end
 
   def create_postgres_database_if_none
