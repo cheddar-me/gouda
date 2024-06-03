@@ -5,7 +5,7 @@ Gem::Specification.new do |spec|
   spec.version = Gouda::VERSION
   spec.summary = "Job Scheduler"
   spec.description = "Job Scheduler for Rails"
-  spec.authors = ["Sebastian van Hesteren", "Julik"]
+  spec.authors = ["Sebastian van Hesteren", "Julik Tarkhanov"]
   spec.email = "sebastian@cheddar.me"
   spec.homepage = "https://rubygems.org/gems/gouda"
   spec.license = "MIT"
