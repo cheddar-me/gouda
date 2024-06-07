@@ -9,20 +9,28 @@ env:
 jobs:
   test:
     name: Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 100ms
+          --health-timeout 1s
+          --health-retries 100
+
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    strategy:
-      matrix:
-        ruby:
-          - '2.7'
-          - '3.2'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby-version: '3.2'
           bundler-cache: true
       - name: "Tests and Lint"
         run: bundle exec rake
