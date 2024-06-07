@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Job Scheduler"
   spec.description = "Job Scheduler for Rails"
   spec.authors = ["Sebastian van Hesteren", "Julik Tarkhanov"]
-  spec.email = "sebastian@cheddar.me"
+  spec.email = ["sebastian@cheddar.me", "me@julik.nl"]
   spec.homepage = "https://rubygems.org/gems/gouda"
   spec.license = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.4.0")
