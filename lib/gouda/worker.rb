@@ -125,8 +125,6 @@ module Gouda
 
     worker_id = [Socket.gethostname, Process.pid, SecureRandom.uuid].join("-")
 
-    Gouda.logger.info("Starting Gouda worker: #{worker_id}")
-
     executing_workload_ids = ThreadSafeSet.new
 
     raise ArgumentError, "You need at least 1 worker thread, but you requested #{n_threads}" if n_threads < 1
