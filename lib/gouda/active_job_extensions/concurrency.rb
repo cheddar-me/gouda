@@ -21,7 +21,7 @@ module Gouda
             enqueue_limit = total_limit
           end
 
-          self.gouda_concurrency_config = {perform_limit:, enqueue_limit:, key:}
+          self.gouda_concurrency_config = {perform_limit: perform_limit, enqueue_limit: enqueue_limit, key: key}
         end
       end
 

@@ -135,7 +135,7 @@ module Gouda
           break if check_shutdown.call
 
           did_process = Gouda.config.app_executor.wrap do
-            Gouda::Workload.checkout_and_perform_one(executing_on: worker_id_and_thread_id, queue_constraint:, in_progress: executing_workload_ids)
+            Gouda::Workload.checkout_and_perform_one(executing_on: worker_id_and_thread_id, queue_constraint: queue_constraint, in_progress: executing_workload_ids)
           end
 
           # If no job was retrieved the queue is likely empty. Relax the polling then and ease off.

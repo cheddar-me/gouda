@@ -66,7 +66,7 @@ class Gouda::Workload < ActiveRecord::Base
             # Appsignal.increment_counter("gouda_workloads_revived", 1, job_class: workload.active_job_class_name)
 
             interrupted_at = workload.last_execution_heartbeat_at
-            workload.update!(state: "finished", interrupted_at:, last_execution_heartbeat_at: Time.now.utc, execution_finished_at: Time.now.utc)
+            workload.update!(state: "finished", interrupted_at: interrupted_at, last_execution_heartbeat_at: Time.now.utc, execution_finished_at: Time.now.utc)
             revived_job = ActiveJob::Base.deserialize(workload.active_job_data)
             # Save the interrupted_at timestamp so that upon execution the new job will raise a Gouda::Interrpupted exception.
             # The exception can then be handled like any other ActiveJob exception (using rescue_from or similar).
@@ -116,7 +116,7 @@ class Gouda::Workload < ActiveRecord::Base
       uncached do # Necessary because we SELECT with a clock_timestamp() which otherwise gets cached by ActiveRecord query cache
         transaction do
           jobs.first.tap do |job|
-            job&.update!(state: "executing", executing_on:, last_execution_heartbeat_at: Time.now.utc, execution_started_at: Time.now.utc)
+            job&.update!(state: "executing", executing_on: executing_on, last_execution_heartbeat_at: Time.now.utc, execution_started_at: Time.now.utc)
           end
         rescue ActiveRecord::RecordNotUnique
           # It can happen that due to a race the `execution_concurrency_key NOT IN` does not capture
@@ -133,7 +133,7 @@ class Gouda::Workload < ActiveRecord::Base
   # @param in_progress[#add,#delete] Used for tracking work in progress for heartbeats
   def self.checkout_and_perform_one(executing_on:, queue_constraint: Gouda::AnyQueue, in_progress: Set.new)
     # Select a job and mark it as "executing" which will make it unavailable to any other
-    workload = checkout_and_lock_one(executing_on:, queue_constraint:)
+    workload = checkout_and_lock_one(executing_on: executing_on, queue_constraint: queue_constraint)
     if workload
       in_progress.add(workload.id)
       workload.perform_and_update_state!
