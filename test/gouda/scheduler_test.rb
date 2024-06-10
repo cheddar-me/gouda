@@ -26,7 +26,7 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
 
     gouda_control_concurrency_with(enqueue_limit: 1, key: -> { self.class.to_s })
 
-    retry_on StandardError, wait: :exponentially_longer, attempts: 5
+    retry_on StandardError, wait: :polynomially_longer, attempts: 5
     retry_on Gouda::InterruptError, wait: 0, attempts: 5
     retry_on MegaError, attempts: 3, wait: 0
 
