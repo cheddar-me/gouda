@@ -72,7 +72,7 @@ module Gouda::Scheduler
       # `class` is a reserved keyword and a method that exists on every Ruby object so...
       cron_entry_params[:job_class] ||= cron_entry_params.delete(:class)
       params_with_defaults = defaults.merge(cron_entry_params)
-      Entry.new(name:, **params_with_defaults)
+      Entry.new(name: name, **params_with_defaults)
     end
   end
 

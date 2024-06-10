@@ -8,7 +8,7 @@ require "active_support/test_case"
 require "minitest/autorun"
 require "minitest"
 require "support/assert_helper"
-require "gouda"
+require_relative "../../lib/gouda"
 
 class ActiveSupport::TestCase
   SEED_DB_NAME = -> { "gouda_tests_%s" % Random.new(Minitest.seed).hex(4) }

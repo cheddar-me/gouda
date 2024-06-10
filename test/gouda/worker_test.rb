@@ -15,7 +15,6 @@ class GoudaWorkerTest < ActiveSupport::TestCase
   # multiple test processes on the same box - and they might start touching
   # files from each other.
   PATH_TO_TEST_FILE = -> { Tempfile.new("#{Process.pid}-gouda-worker-test-output.bin") }
-  # PATH_TO_TEST_FILE = -> { File.expand_path(File.join(ENV["TEMPDR"] || "tmp", "#{Process.pid}-gouda-worker-test-output.bin")) }
 
   class JobWithEnqueueKey < ActiveJob::Base
     self.queue_adapter = :gouda

@@ -57,7 +57,7 @@ module Gouda
     Gouda.logger.info("Gouda version: #{Gouda::VERSION}")
     Gouda.logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
 
-    Gouda.worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint:)
+    Gouda.worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint: queue_constraint)
   end
 
   def self.config
