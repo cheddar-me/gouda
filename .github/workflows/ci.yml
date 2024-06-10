@@ -9,28 +9,33 @@ env:
 jobs:
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    strategy:
+      matrix:
+        ruby:
+          - '3.2'
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres
         env:
           POSTGRES_PASSWORD: postgres
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
         ports:
           - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 100ms
-          --health-timeout 1s
-          --health-retries 100
 
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2'
+          ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
       - name: "Tests and Lint"
         run: bundle exec rake
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          TESTOPTS: "--fail-fast"
