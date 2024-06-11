@@ -7,3 +7,7 @@
 ## [0.1.1] - 2023-06-10
 
 - Fix support for older ruby versions until 2.7
+
+## [0.1.2] - 2023-06-11
+
+- Updated readme and method renaming in Scheduler
