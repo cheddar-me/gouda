@@ -79,7 +79,7 @@ batches of jobs. It is supplemented by a module which will make all `perform_lat
 ```ruby
 Gouda.in_bulk do
   User.joined_recently.find_each do |user|
-    WelcomeMailer.deliver_later(user)
+    WelcomeMailer.with(user:).welcome_email.deliver_later
   end
 end
 ```
@@ -96,7 +96,7 @@ once the data it needs to operate on is already available for reading. This is g
 ```ruby
 User.transaction do
   freshly_joined_user = User.create!(user_params)
-  WelcomeMailer.deliver_later(freshly_joined_user)
+  WelcomeMailer.with(user: freshly_joined_user).welcome_email.deliver_later
 end
 ```
 
