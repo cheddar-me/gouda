@@ -53,7 +53,33 @@ module Gouda::Scheduler
     end
   end
 
-  def self.update_schedule_from_config!(cron_table_hash = nil)
+  # Takes in a Hash formatted with cron entries in the format similar
+  # to good_job, and builds a table of scheduler entries. A scheduler
+  # entry references a particular job class name, the set of arguments to
+  # be passed to the job when performing it, and either the interval
+  # to repeat the job after or a cron pattern. This method does not
+  # insert the actual Workloads into the database but just builds the
+  # table of the entries. That table gets consulted when workloads finish
+  # to determine whether the workload that just ran was scheduled or ad-hoc,
+  # and whether the subsequent workload has to be enqueued.
+  #
+  # If no table is given the method will attempt to read the table from
+  # Rails application config from `[:gouda][:cron]`.
+  #
+  # The table is a Hash of entries, and the keys are the names of the workload
+  # to be enqueued - those keys are also used to ensure scheduled workloads
+  # only get scheduled once.
+  #
+  # @param cron_table_hash[Hash] a hash of the following shape:
+  #     {
+  #       download_invoices_every_minute: {
+  #         cron: "* * * * *",
+  #         class: "DownloadInvoicesJob",
+  #         args: ["immediate"]
+  #       }
+  #     }
+  # @return Array[Entry]
+  def self.build_scheduler_entries_list!(cron_table_hash = nil)
     Gouda.logger.info "Updating scheduled workload entries..."
     if cron_table_hash.blank?
       config_from_rails = Rails.application.config.try(:gouda)
@@ -76,6 +102,12 @@ module Gouda::Scheduler
     end
   end
 
+  # Once a workload has finished (doesn't matter whether it raised an exception
+  # or completed successfully), it is going to be passed to this method to enqueue
+  # the next scheduled workload
+  #
+  # @param finished_workload[Gouda::Workload]
+  # @return void
   def self.enqueue_next_scheduled_workload_for(finished_workload)
     return unless finished_workload.scheduler_key
 
@@ -86,11 +118,23 @@ module Gouda::Scheduler
     Gouda.enqueue_jobs_via_their_adapters([timer_entry.build_active_job])
   end
 
+  # Returns the list of entries of the scheduler which are currently known. Normally the
+  # scheduler will hold the list of entries loaded from the Rails config.
+  #
+  # @return Array[Entry]
   def self.entries
     @cron_table || []
   end
 
-  def self.update_scheduled_workloads!
+  # Will upsert (`INSERT ... ON CONFLICT UPDATE`) workloads for all entries which are in the scheduler entries
+  # table (the table needs to be read or hydrated first using `build_scheduler_entries_list!`). This is done
+  # in a transaction. Any workloads which have been previously inserted from the scheduled entries, but no
+  # longer have a corresponding scheduler entry, will be deleted from the database. If there already are workloads
+  # with the corresponding scheduler key they will not be touched and will be performed with their previously-defined
+  # arguments.
+  #
+  # @return void
+  def self.upsert_workloads_from_entries_list!
     table_entries = @cron_table || []
 
     # Remove any cron keyed workloads which no longer match config-wise
