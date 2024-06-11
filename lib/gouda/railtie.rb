@@ -34,8 +34,6 @@ module Gouda
     # The `to_prepare` block which is executed once in production
     # and before each request in development.
     config.to_prepare do
-      Gouda::Scheduler.update_schedule_from_config!
-
       if defined?(Rails) && Rails.respond_to?(:application)
         config_from_rails = Rails.application.config.try(:gouda)
         if config_from_rails
@@ -52,6 +50,9 @@ module Gouda
         Gouda.config.polling_sleep_interval_seconds = 0.2
         Gouda.config.logger.level = Gouda.config.log_level
       end
+
+      Gouda::Scheduler.build_scheduler_entries_list!
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
     end
   end
 end

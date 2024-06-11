@@ -44,8 +44,8 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     }
 
     assert_nothing_raised do
-      Gouda::Scheduler.update_schedule_from_config!(tab)
-      Gouda::Scheduler.update_scheduled_workloads!
+      Gouda::Scheduler.build_scheduler_entries_list!(tab)
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
     end
 
     assert_equal 1, Gouda::Workload.enqueued.count
@@ -67,12 +67,12 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     }
 
     assert_nothing_raised do
-      Gouda::Scheduler.update_schedule_from_config!(tab)
+      Gouda::Scheduler.build_scheduler_entries_list!(tab)
     end
 
     assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
       3.times do
-        Gouda::Scheduler.update_scheduled_workloads!
+        Gouda::Scheduler.upsert_workloads_from_entries_list!
       end
     end
 
@@ -85,7 +85,7 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
 
     assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
       3.times do
-        Gouda::Scheduler.update_scheduled_workloads!
+        Gouda::Scheduler.upsert_workloads_from_entries_list!
       end
     end
 
@@ -111,11 +111,11 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     }
 
     assert_nothing_raised do
-      Gouda::Scheduler.update_schedule_from_config!(tab)
+      Gouda::Scheduler.build_scheduler_entries_list!(tab)
     end
 
     assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
-      Gouda::Scheduler.update_scheduled_workloads!
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
     end
 
     assert_equal [nil, nil], Gouda::Workload.first.serialized_params["arguments"]
@@ -149,13 +149,13 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
       }
     }
     assert_nothing_raised do
-      Gouda::Scheduler.update_schedule_from_config!(tab)
+      Gouda::Scheduler.build_scheduler_entries_list!(tab)
     end
 
     travel_to Time.utc(2023, 6, 23, 20, 0)
     assert_changes_by(-> { Gouda::Workload.count }, exactly: 4) do
       3.times do
-        Gouda::Scheduler.update_scheduled_workloads!
+        Gouda::Scheduler.upsert_workloads_from_entries_list!
       end
     end
 
@@ -165,15 +165,15 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
       kwargs: {mandatory: "good"}
     }
 
-    Gouda::Scheduler.update_schedule_from_config!(tab)
+    Gouda::Scheduler.build_scheduler_entries_list!(tab)
     assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
-      Gouda::Scheduler.update_scheduled_workloads!
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
     end
 
     assert tab.delete(:fifth)
-    Gouda::Scheduler.update_schedule_from_config!(tab)
+    Gouda::Scheduler.build_scheduler_entries_list!(tab)
     assert_changes_by(-> { Gouda::Workload.count }, exactly: -1) do
-      Gouda::Scheduler.update_scheduled_workloads!
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
     end
 
     Gouda::Workload.all.each(&:perform_and_update_state!)
