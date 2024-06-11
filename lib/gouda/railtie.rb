@@ -52,7 +52,15 @@ module Gouda
       end
 
       Gouda::Scheduler.build_scheduler_entries_list!
-      Gouda::Scheduler.upsert_workloads_from_entries_list!
+      begin
+        Gouda::Scheduler.upsert_workloads_from_entries_list!
+      rescue ActiveRecord::NoDatabaseError
+        # Do nothing. On a freshly checked-out Rails app, running even unrelated Rails tasks
+        # (such as asset compilation) - or, more importantly, initial db:create -
+        # will cause a NoDatabaseError, as this is a chicken-and-egg problem. That error
+        # is safe to ignore in this instance - we should let the outer task proceed,
+        # because if there is no database we should allow it to get created.
+      end
     end
   end
 end
