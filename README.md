@@ -84,7 +84,7 @@ Gouda.in_bulk do
 end
 ```
 
-If multiple ActiveJob adapters and you bulkify a job which uses an adapter different than Gouda, `in_bulk` will try to use `enqueue_all` on that
+If there are multiple ActiveJob adapters configured and you bulk-enqueue a job which uses an adapter different than Gouda, `in_bulk` will try to use `enqueue_all` on that
 adapter as well.
 
 ## Usage tips: co-commit
