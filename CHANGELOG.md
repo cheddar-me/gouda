@@ -11,3 +11,7 @@
 ## [0.1.2] - 2023-06-11
 
 - Updated readme and method renaming in Scheduler
+
+## [0.1.3] - 2023-06-11
+
+- Allow the Rails app to boot even if there is no database yet
