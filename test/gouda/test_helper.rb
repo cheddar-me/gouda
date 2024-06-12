@@ -23,6 +23,8 @@ class ActiveSupport::TestCase
     @adapter || Gouda::Adapter.new
     @case_random = Random.new(Minitest.seed)
     Gouda::Railtie.initializers.each(&:run)
+    ActiveJob::Base.logger = nil
+    Gouda.config.logger.level = 4
   end
 
   teardown do
