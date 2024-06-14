@@ -7,13 +7,13 @@ Gem::Specification.new do |spec|
   spec.description = "Job Scheduler for Rails and PostgreSQL"
   spec.authors = ["Sebastian van Hesteren", "Julik Tarkhanov"]
   spec.email = ["sebastian@cheddar.me", "me@julik.nl"]
-  spec.homepage = "https://rubygems.org/gems/gouda"
+  spec.homepage = "https://github.com/cheddar-me/gouda"
   spec.license = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.7.0")
   spec.require_paths = ["lib"]
 
-  spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/cheddar-me/gouda"
+  spec.metadata["homepage_uri"] = 
+  spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["changelog_uri"] = "https://github.com/cheddar-me/gouda/CHANGELOG.md"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
