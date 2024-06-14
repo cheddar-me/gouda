@@ -1,7 +1,10 @@
 Gouda is an ActiveJob adapter used at Cheddar. It requires PostgreSQL and a recent version of Rails.
 
-⚠️ At the moment Gouda is only used internally at Cheddar. We do not provide support for it, nor do we accept
-issues or feature requests. This is likely to change in the future.
+> [!CAUTION]
+> At the moment Gouda is only used internally at Cheddar. Any support to external parties is on best-effort
+> basis. While we are happy to see issues and pull requests, we can't guarantee that those will be addressed
+> quickly. The library does receive rapid updates which may break your application if you come to depend on
+> the library. That is to be expected.
 
 ## Installation
 
@@ -11,10 +14,10 @@ $ bundle install
 $ bin/rails g gouda:install
 ```
 
-Gouda is build as a lightweight alternative to [good_job](https://github.com/bensheldon/good_job) and has been created before [solid_queue.](https://github.com/rails/solid_queue/)
-It is _smaller_ than solid_queue though.
-
-It was designed to enable job processing using `SELECT ... FOR UPDATE SKIP LOCKED` on Postgres so that we could use pg_bouncer in our system setup. 
+Gouda is a lightweight alternative to [good_job](https://github.com/bensheldon/good_job) and [solid_queue.](https://github.com/rails/solid_queue/) - while
+more similar to the latter. It has been created prior to solid_queue and is smaller. It was designed to enable job processing using `SELECT ... FOR UPDATE SKIP LOCKED`
+on Postgres so that we could use pg_bouncer in our system setup. We have also observed that `SKIP LOCKED` causes less load on our database than advisory locking,
+especially as queue depths would grow. 
 
 
 ## Key concepts in Gouda: Workload
