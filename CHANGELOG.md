@@ -15,3 +15,11 @@
 ## [0.1.3] - 2023-06-11
 
 - Allow the Rails app to boot even if there is no database yet
+
+## [0.1.4] - 2023-06-14
+
+- Rescue NoDatabaseError at scheduler update.
+- Include tests in gem, for sake of easier debugging.
+- Reduce logging in local test runs.
+- Bump local ruby version to 3.3.3
+
