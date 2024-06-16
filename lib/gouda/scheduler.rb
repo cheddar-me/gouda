@@ -11,6 +11,9 @@ module Gouda::Scheduler
       [name, interval_seconds, cron, job_class].compact.join("_")
     end
 
+    # Tells when this particular task should next run
+    #
+    # @return [Time]
     def next_at
       if interval_seconds
         first_existing = Gouda::Workload.where(scheduler_key: scheduler_key).where("scheduled_at > NOW()").order("scheduled_at DESC").pluck(:scheduled_at).first
@@ -22,6 +25,9 @@ module Gouda::Scheduler
       end
     end
 
+    # Builds the ActiveJob which can be enqueued for this entry
+    #
+    # @return [ActiveJob::Base]
     def build_active_job
       next_at = self.next_at
       return unless next_at
