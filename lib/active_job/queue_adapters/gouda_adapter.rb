@@ -6,5 +6,5 @@
 # name from the symbol automatically. If Rails ever allows
 # us to "register" an adapter to a symbol this module can
 # be removed later.
-module ActiveJob::QueueAdapters::GoudaAdapter < Gouda::Adapter
+class ActiveJob::QueueAdapters::GoudaAdapter < Gouda::Adapter
 end
