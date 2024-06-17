@@ -71,8 +71,9 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     sleep(2)
     Gouda::Workload.checkout_and_perform_one(executing_on: "Unit test")
 
-    assert Gouda::Workload.retried.reload.count == 1
+    assert_equal 1, Gouda::Workload.retried.reload.count
     assert_nil Gouda::Workload.retried.first.scheduler_key
+    assert_equal "enqueued", Gouda::Workload.retried.first.state
   end
 
   test "re-inserts the next subsequent job after executing the queued one" do
