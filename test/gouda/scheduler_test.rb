@@ -24,8 +24,6 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     class MegaError < StandardError
     end
 
-    gouda_control_concurrency_with(enqueue_limit: 1, key: -> { self.class.to_s })
-
     retry_on StandardError, wait: :polynomially_longer, attempts: 5
     retry_on Gouda::InterruptError, wait: 0, attempts: 5
     retry_on MegaError, attempts: 3, wait: 0
@@ -53,6 +51,28 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
 
     refute_empty Gouda::Workload.enqueued
     assert Gouda::Workload.count > 3
+  end
+
+  test "retries do not have a scheduler_key" do
+    tab = {
+      second_minutely: {
+        cron: "*/1 * * * * *", # every second
+        class: "GoudaSchedulerTest::FailingJob"
+      }
+    }
+
+    assert_nothing_raised do
+      Gouda::Scheduler.build_scheduler_entries_list!(tab)
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
+    end
+
+    assert_equal 1, Gouda::Workload.enqueued.count
+    assert_equal "second_minutely_*/1 * * * * *_GoudaSchedulerTest::FailingJob", Gouda::Workload.enqueued.first.scheduler_key
+    sleep(2)
+    Gouda::Workload.checkout_and_perform_one(executing_on: "Unit test")
+
+    assert Gouda::Workload.retried.reload.count == 1
+    assert_nil Gouda::Workload.retried.first.scheduler_key
   end
 
   test "re-inserts the next subsequent job after executing the queued one" do
