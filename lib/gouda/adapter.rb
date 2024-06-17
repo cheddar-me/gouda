@@ -57,10 +57,11 @@ class Gouda::Adapter
       # We can't tell Postgres to ignore conflicts on _both_ the scheduler key and the enqueue concurrency key but not on
       # the ID - it is either "all indexes" or "just one", but never "this index and that index". MERGE https://www.postgresql.org/docs/current/sql-merge.html
       # is in theory capable of solving this but let's not complicate things all to hastily, the hour is getting late
+      scheduler_key = active_job.try(:executions) == 0 ? active_job.scheduler_key : nil # only enforce scheduler key on first workload
       {
         active_job_id: active_job.job_id, # Multiple jobs can have the same ID due to retries, job-iteration etc.
         scheduled_at: active_job.scheduled_at || t_now,
-        scheduler_key: active_job.scheduler_key, # So that the scheduler_key gets retained between retries
+        scheduler_key: scheduler_key,
         priority: active_job.priority,
         execution_concurrency_key: extract_execution_concurrency_key(active_job),
         enqueue_concurrency_key: extract_enqueue_concurrency_key(active_job),
