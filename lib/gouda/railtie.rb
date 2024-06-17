@@ -54,7 +54,7 @@ module Gouda
       Gouda::Scheduler.build_scheduler_entries_list!
       begin
         Gouda::Scheduler.upsert_workloads_from_entries_list!
-      rescue ActiveRecord::NoDatabaseError
+      rescue PG::UndefinedTable, ActiveRecord::NoDatabaseError
         # Do nothing. On a freshly checked-out Rails app, running even unrelated Rails tasks
         # (such as asset compilation) - or, more importantly, initial db:create -
         # will cause a NoDatabaseError, as this is a chicken-and-egg problem. That error
