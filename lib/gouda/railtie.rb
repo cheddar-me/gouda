@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Gouda
+  UNINITIALISED_DATABASE_EXCEPTIONS = [ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished]
+
   class Railtie < Rails::Railtie
     rake_tasks do
       task preload: :setup do
@@ -54,7 +56,7 @@ module Gouda
       Gouda::Scheduler.build_scheduler_entries_list!
       begin
         Gouda::Scheduler.upsert_workloads_from_entries_list!
-      rescue PG::UndefinedTable, ActiveRecord::NoDatabaseError
+      rescue *Gouda::UNINITIALISED_DATABASE_EXCEPTIONS
         # Do nothing. On a freshly checked-out Rails app, running even unrelated Rails tasks
         # (such as asset compilation) - or, more importantly, initial db:create -
         # will cause a NoDatabaseError, as this is a chicken-and-egg problem. That error
