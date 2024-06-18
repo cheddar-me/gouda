@@ -23,3 +23,7 @@
 - Reduce logging in local test runs.
 - Bump local ruby version to 3.3.3
 
+## [0.1.5] - 2023-06-18
+
+- Update documentation
+- Don't pass on scheduler keys to retries
