@@ -163,7 +163,8 @@ module Gouda
         # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
         Gouda::Workload.reap_zombie_workloads
       rescue => e
-        Appsignal.add_exception(e)
+        Gouda.instrument(:exception, exception: e)
+
         warn "Uncaught exception during housekeeping (#{e.class} - #{e}"
       end
 

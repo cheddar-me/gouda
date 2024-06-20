@@ -70,6 +70,11 @@ module Gouda
     Gouda.config.logger
   end
 
+  def self.instrument(channel, **options, &block)
+    ActiveSupport::Notifications.instrument("#{channel}.gouda", **options, &block)
+  end
+
+
   def self.create_tables(active_record_schema)
     active_record_schema.create_enum :gouda_workload_state, %w[enqueued executing finished]
     active_record_schema.create_table :gouda_workloads, id: :uuid do |t|
