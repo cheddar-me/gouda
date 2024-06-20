@@ -27,3 +27,8 @@
 
 - Update documentation
 - Don't pass on scheduler keys to retries
+
+## [0.1.6] - 2023-06-18
+
+- Fix: don't upsert workloads twice when starting Gouda.
+- Add back in Appsignal calls

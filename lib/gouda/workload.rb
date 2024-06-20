@@ -63,7 +63,7 @@ class Gouda::Workload < ActiveRecord::Base
           workload.with_lock("FOR UPDATE SKIP LOCKED") do
             Gouda.logger.info { "Reviving (re-enqueueing) Gouda workload #{workload.id} after interruption" }
 
-            # Appsignal.increment_counter("gouda_workloads_revived", 1, job_class: workload.active_job_class_name)
+            Appsignal.increment_counter("gouda_workloads_revived", 1, job_class: workload.active_job_class_name)
 
             interrupted_at = workload.last_execution_heartbeat_at
             workload.update!(state: "finished", interrupted_at: interrupted_at, last_execution_heartbeat_at: Time.now.utc, execution_finished_at: Time.now.utc)
