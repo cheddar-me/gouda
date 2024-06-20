@@ -46,8 +46,6 @@ module Gouda
   end
 
   def self.start
-    Gouda::Scheduler.upsert_workloads_from_entries_list!
-
     queue_constraint = if ENV["GOUDA_QUEUES"]
       Gouda.parse_queue_constraint(ENV["GOUDA_QUEUES"])
     else
