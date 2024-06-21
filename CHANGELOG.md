@@ -36,3 +36,7 @@
 ## [0.1.7] - 2023-06-21
 
 - Separate all instrumentation to use ActiveSupport::Notification
+
+## [0.1.8] - 2023-06-21
+
+- Move some missed instrumentations to Gouda.instrument
