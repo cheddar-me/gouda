@@ -83,7 +83,7 @@ class Gouda::Adapter
     # Use batches of 500 so that we do not exceed the maximum statement size or do not create a transaction for the
     # insert which times out
     inserted_ids_and_positions = bulk_insert_attributes.each_slice(500).flat_map do |chunk|
-      Gouda.instrument(:insert_all, n_rows: chunk.size) do |payload|
+      Gouda.instrument(:insert_all, {n_rows: chunk.size}) do |payload|
         rows = Gouda::Workload.insert_all(chunk, returning: [:id, :position_in_bulk])
         payload[:inserted_jobs] = rows.length
         payload[:rejected_jobs] = chunk.size - rows.length

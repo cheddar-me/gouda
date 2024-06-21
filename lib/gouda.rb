@@ -70,8 +70,8 @@ module Gouda
     Gouda.config.logger
   end
 
-  def self.instrument(channel, **options, &block)
-    ActiveSupport::Notifications.instrument("#{channel}.gouda", **options, &block)
+  def self.instrument(channel, options, &block)
+    ActiveSupport::Notifications.instrument("#{channel}.gouda", options, &block)
   end
 
 

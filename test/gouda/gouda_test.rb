@@ -647,7 +647,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   test "instrumentation" do
     payload = subscribed_notification_for("workloads_revived_counter.gouda") do
-      Gouda.instrument(:workloads_revived_counter, size: 1, job_class: "test_class")
+      Gouda.instrument(:workloads_revived_counter, {size: 1, job_class: "test_class"})
     end
 
     assert_equal "test_class", payload[:job_class]

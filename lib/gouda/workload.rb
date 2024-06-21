@@ -63,7 +63,7 @@ class Gouda::Workload < ActiveRecord::Base
           workload.with_lock("FOR UPDATE SKIP LOCKED") do
             Gouda.logger.info { "Reviving (re-enqueueing) Gouda workload #{workload.id} after interruption" }
 
-            Gouda.instrument(:workloads_revived_counter, size: 1, job_class: workload.active_job_class_name)
+            Gouda.instrument(:workloads_revived_counter, {size: 1, job_class: workload.active_job_class_name})
 
             interrupted_at = workload.last_execution_heartbeat_at
             workload.update!(state: "finished", interrupted_at: interrupted_at, last_execution_heartbeat_at: Time.now.utc, execution_finished_at: Time.now.utc)
@@ -110,7 +110,7 @@ class Gouda::Workload < ActiveRecord::Base
       .lock("FOR UPDATE SKIP LOCKED")
       .limit(1)
 
-    _first_available_workload = Gouda.instrument(:checkout_and_lock_one, queue_constraint: queue_constraint.to_sql) do |payload|
+    _first_available_workload = ActiveSupport::Notifications.instrument(:checkout_and_lock_one, {queue_constraint: queue_constraint.to_sql}) do |payload|
       payload[:condition_sql] = jobs.to_sql
       payload[:retried_checkouts_due_to_concurrent_exec] = 0
       uncached do # Necessary because we SELECT with a clock_timestamp() which otherwise gets cached by ActiveRecord query cache
@@ -147,7 +147,7 @@ class Gouda::Workload < ActiveRecord::Base
   end
 
   def perform_and_update_state!
-    ActiveSupport::Notifications.instrument("perform_job.gouda", {workload: self}) do |instrument_payload|
+    Gouda.instrument(:perform_job, {workload: self}) do |instrument_payload|
       extras = {}
       if Gouda::JobFuse.exists?(active_job_class_name: active_job_class_name)
         extras[:error] = {class_name: "WorkloadSkippedError", message: "Skipped because of a fuse at #{Time.now.utc}"}
