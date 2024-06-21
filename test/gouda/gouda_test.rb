@@ -645,6 +645,15 @@ class GoudaTest < ActiveSupport::TestCase
     assert_equal ["did-run"], Thread.current[:gouda_test_side_effects]
   end
 
+  test "instrumentation" do
+    payload = subscribed_notification_for("workloads_revived_counter.gouda") do
+      Gouda.instrument(:workloads_revived_counter, size: 1, job_class: "test_class")
+    end
+
+    assert_equal "test_class", payload[:job_class]
+    assert_equal 1, payload[:size]
+  end
+
   def sample_description(sample)
     values = sample.map(&:to_f).sort
 

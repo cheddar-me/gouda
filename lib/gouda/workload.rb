@@ -110,7 +110,7 @@ class Gouda::Workload < ActiveRecord::Base
       .lock("FOR UPDATE SKIP LOCKED")
       .limit(1)
 
-    _first_available_workload = ActiveSupport::Notifications.instrument("checkout_and_lock_one.gouda", {queue_constraint: queue_constraint.to_sql}) do |payload|
+    _first_available_workload = Gouda.instrument(:checkout_and_lock_one, queue_constraint: queue_constraint.to_sql) do |payload|
       payload[:condition_sql] = jobs.to_sql
       payload[:retried_checkouts_due_to_concurrent_exec] = 0
       uncached do # Necessary because we SELECT with a clock_timestamp() which otherwise gets cached by ActiveRecord query cache

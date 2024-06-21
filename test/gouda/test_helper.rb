@@ -67,4 +67,17 @@ class ActiveSupport::TestCase
       end
     end
   end
+
+  def subscribed_notification_for(notification)
+    payload = nil
+    subscription = ActiveSupport::Notifications.subscribe notification do |name, start, finish, id, _payload|
+      payload = _payload
+    end
+
+    yield
+
+    ActiveSupport::Notifications.unsubscribe(subscription)
+
+    return payload
+  end
 end
