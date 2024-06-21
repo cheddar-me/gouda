@@ -32,3 +32,7 @@
 
 - Fix: don't upsert workloads twice when starting Gouda.
 - Add back in Appsignal calls
+
+## [0.1.7] - 2023-06-21
+
+- Separate all instrumentation to use ActiveSupport::Notification
