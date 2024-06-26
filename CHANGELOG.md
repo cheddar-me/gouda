@@ -40,3 +40,7 @@
 ## [0.1.8] - 2023-06-21
 
 - Move some missed instrumentations to Gouda.instrument
+
+## [0.1.9] - 2023-06-26
+
+- Fix: cleanup_preserved_jobs_before in Gouda::Workload.prune now points to Gouda.config

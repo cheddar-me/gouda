@@ -45,7 +45,7 @@ class Gouda::Workload < ActiveRecord::Base
 
   def self.prune
     if Gouda.config.preserve_job_records
-      where(state: "finished").where("execution_finished_at < ?", Gouda.cleanup_preserved_jobs_before.ago).delete_all
+      where(state: "finished").where("execution_finished_at < ?", Gouda.config.cleanup_preserved_jobs_before.ago).delete_all
     else
       where(state: "finished").delete_all
     end
