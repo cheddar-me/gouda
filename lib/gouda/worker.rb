@@ -84,12 +84,7 @@ module Gouda
 
     def call
       Gouda.config.app_executor.wrap do
-        # This method is called frequently. If logging is done at a low level (DEBUG or other)
-        # this will print a lot of SQL into the logs, on every poll. While that is useful if
-        # you collect SQL queries from the logs, in most cases - especially if this is used
-        # in a side-thread inside Puma - the output might be quite annoying. So silence the
-        # logger when we poll, but just to INFO. Omitting DEBUG-level messages gets rid of the SQL.
-        Gouda::Workload.logger.silence(Logger::INFO) { Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none? }
+        Gouda.suppressing_sql_logs { Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none? }
       end
     rescue
       # It is possible that in this scenario we do not have a database set up yet, for example,
@@ -164,7 +159,7 @@ module Gouda
         # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
         # even though the worker it was running on has failed for whatever reason.
         # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
-        Gouda::Workload.logger.silence(Logger::INFO) do # these updates will also be very frequent with long-running jobs, and they generate SQL
+        Gouda.suppressing_sql_logs do # these updates will also be very frequent with long-running jobs
           Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
         end
 
