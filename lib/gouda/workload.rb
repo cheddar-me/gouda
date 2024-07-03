@@ -115,9 +115,15 @@ class Gouda::Workload < ActiveRecord::Base
       payload[:retried_checkouts_due_to_concurrent_exec] = 0
       uncached do # Necessary because we SELECT with a clock_timestamp() which otherwise gets cached by ActiveRecord query cache
         transaction do
-          jobs.first.tap do |job|
-            job&.update!(state: "executing", executing_on: executing_on, last_execution_heartbeat_at: Time.now.utc, execution_started_at: Time.now.utc)
-          end
+          # This method is called frequently. If logging is done at a low level (DEBUG or other)
+          # this will print a lot of SQL into the logs, on every poll. While that is useful if
+          # you collect SQL queries from the logs, in most cases - especially if this is used
+          # in a side-thread inside Puma - the output might be quite annoying. So silence the
+          # logger when we poll, but just to INFO. Omitting DEBUG-level messages gets rid of the SQL.
+          # Now, it might be prudent to add an envvar for enabling this output (to debug Gouda itself,
+          # or to debug Gouda inside of an application) - we can think about it later.
+          job = logger.silence(Logger::INFO) { jobs.first }
+          job&.update!(state: "executing", executing_on: executing_on, last_execution_heartbeat_at: Time.now.utc, execution_started_at: Time.now.utc)
         rescue ActiveRecord::RecordNotUnique
           # It can happen that due to a race the `execution_concurrency_key NOT IN` does not capture
           # a job which _just_ entered the "executing" state, apparently after we do our SELECT. This will happen regardless

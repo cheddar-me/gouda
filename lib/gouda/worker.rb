@@ -83,12 +83,18 @@ module Gouda
     end
 
     def call
-      # return false unless Rails.application # Rails is still booting and there is no application defined
-
       Gouda.config.app_executor.wrap do
-        Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none?
+        # This method is called frequently. If logging is done at a low level (DEBUG or other)
+        # this will print a lot of SQL into the logs, on every poll. While that is useful if
+        # you collect SQL queries from the logs, in most cases - especially if this is used
+        # in a side-thread inside Puma - the output might be quite annoying. So silence the
+        # logger when we poll, but just to INFO. Omitting DEBUG-level messages gets rid of the SQL.
+        Gouda::Workload.logger.silence(Logger::INFO) { Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none? }
       end
-    rescue # If the DB connection cannot be checked out etc
+    rescue
+      # It is possible that in this scenario we do not have a database set up yet, for example,
+      # or we are unable to connect to the DB for whatever reason. In that case we should
+      # return `false` so that the worker can poll again later.
       false
     end
   end
