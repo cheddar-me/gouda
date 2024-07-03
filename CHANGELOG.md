@@ -52,3 +52,7 @@
 ## [0.1.11] - 2024-07-03
 
 - Fix: make sure the Gouda logger config does not get used during Rails initialization
+
+## [0.1.12] - 2024-07-03
+
+- When doing polling, suppress DEBUG-level messages. This will stop Gouda spamming the logs with SQL in dev/test environments.

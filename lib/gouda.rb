@@ -81,6 +81,20 @@ module Gouda
     Rails.try(:logger) || ActiveJob::Base.try(:logger) || @fallback_gouda_logger
   end
 
+  def self.suppressing_sql_logs(&blk)
+    # This is used for frequently-called methods that poll the DB. If logging is done at a low level (DEBUG)
+    # those methods print a lot of SQL into the logs, on every poll. While that is useful if
+    # you collect SQL queries from the logs, in most cases - especially if this is used
+    # in a side-thread inside Puma - the output might be quite annoying. So silence the
+    # logger when we poll, but just to INFO. Omitting DEBUG-level messages gets rid of the SQL.
+    if Gouda::Workload.logger
+      Gouda::Workload.logger.silence(Logger::INFO, &blk)
+    else
+      # In tests (and at earlier stages of the Rails boot cycle) the global ActiveRecord logger may be nil
+      yield
+    end
+  end
+
   def self.instrument(channel, options, &block)
     ActiveSupport::Notifications.instrument("#{channel}.gouda", options, &block)
   end

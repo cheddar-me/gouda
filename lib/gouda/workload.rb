@@ -115,9 +115,9 @@ class Gouda::Workload < ActiveRecord::Base
       payload[:retried_checkouts_due_to_concurrent_exec] = 0
       uncached do # Necessary because we SELECT with a clock_timestamp() which otherwise gets cached by ActiveRecord query cache
         transaction do
-          jobs.first.tap do |job|
-            job&.update!(state: "executing", executing_on: executing_on, last_execution_heartbeat_at: Time.now.utc, execution_started_at: Time.now.utc)
-          end
+          job = Gouda.suppressing_sql_logs { jobs.first } # Silence SQL output as this gets called very frequently
+          job&.update!(state: "executing", executing_on: executing_on, last_execution_heartbeat_at: Time.now.utc, execution_started_at: Time.now.utc)
+          job
         rescue ActiveRecord::RecordNotUnique
           # It can happen that due to a race the `execution_concurrency_key NOT IN` does not capture
           # a job which _just_ entered the "executing" state, apparently after we do our SELECT. This will happen regardless

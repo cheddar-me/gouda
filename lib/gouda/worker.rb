@@ -83,12 +83,13 @@ module Gouda
     end
 
     def call
-      # return false unless Rails.application # Rails is still booting and there is no application defined
-
       Gouda.config.app_executor.wrap do
-        Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none?
+        Gouda.suppressing_sql_logs { Gouda::Workload.waiting_to_start(queue_constraint: @queue_constraint).none? }
       end
-    rescue # If the DB connection cannot be checked out etc
+    rescue
+      # It is possible that in this scenario we do not have a database set up yet, for example,
+      # or we are unable to connect to the DB for whatever reason. In that case we should
+      # return `false` so that the worker can poll again later.
       false
     end
   end
@@ -158,13 +159,14 @@ module Gouda
         # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
         # even though the worker it was running on has failed for whatever reason.
         # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
-        Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
+        Gouda.suppressing_sql_logs do # these updates will also be very frequent with long-running jobs
+          Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
+        end
 
         # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
         Gouda::Workload.reap_zombie_workloads
       rescue => e
         Gouda.instrument(:exception, {exception: e})
-
         warn "Uncaught exception during housekeeping (#{e.class} - #{e}"
       end
 
