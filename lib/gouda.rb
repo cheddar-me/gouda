@@ -24,19 +24,14 @@ module Gouda
     config_accessor(:cleanup_preserved_jobs_before, default: 3.hours)
     config_accessor(:polling_sleep_interval_seconds, default: 0.2)
     config_accessor(:worker_thread_count, default: 1)
-    config_accessor(:logger, default: ActiveSupport::Logger.new($stdout))
     config_accessor(:app_executor)
     config_accessor(:cron, default: {})
     config_accessor(:enable_cron, default: true)
-    # Log levels are:
-    # constant    |   level
-    # Logger::DEBUG   (0)
-    # Logger::INFO    (1)
-    # Logger::WARN    (2)
-    # Logger::ERROR   (3)
-    # Logger::FATAL   (4)
-    # Logger::UNKNOWN (5)
-    config_accessor(:log_level, default: Logger::DEBUG)
+    # Deprecated logger configuration. This needs to be available in the
+    # Configuration object because it might be used from the Rails app
+    # that is using Gouda. The config values will be ignored though.
+    config_accessor(:logger, default: nil)
+    config_accessor(:log_level, default: nil)
   end
 
   class InterruptError < StandardError
@@ -52,10 +47,10 @@ module Gouda
       Gouda::AnyQueue
     end
 
-    Gouda.logger.info("Gouda version: #{Gouda::VERSION}")
-    Gouda.logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
+    logger.info("Gouda version: #{Gouda::VERSION}")
+    logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
 
-    Gouda.worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint: queue_constraint)
+    worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint: queue_constraint)
   end
 
   def self.config
@@ -67,13 +62,28 @@ module Gouda
   end
 
   def self.logger
-    Gouda.config.logger
+    # By default, return a logger that sends data nowhere. The `Rails.logger` method
+    # only becomes available later in the Rails lifecycle.
+    @fallback_gouda_logger ||= begin
+      ActiveSupport::Logger.new($stdout).tap do |logger|
+        logger.level = Logger::WARN
+      end
+    end
+
+    # We want the Rails-configured loggers to take precedence over ours, since Gouda
+    # is just an ActiveJob adapter and the Workload is just an ActiveRecord, in the end.
+    # So it should be up to the developer of the app, not to us, to set the logger up
+    # and configure out. There are also gems such as "stackdriver" from Google which
+    # rather unceremonously overwrite the Rails logger with their own. If that happens,
+    # it is the choice of the user to do so - and we should honor that choice. Same for
+    # the logging level - the Rails logger level must take precendence. Same for logger
+    # broadcasts which get set up, for example, by the Rails console when you start it.
+    Rails.try(:logger) || ActiveJob::Base.try(:logger) || @fallback_gouda_logger
   end
 
   def self.instrument(channel, options, &block)
     ActiveSupport::Notifications.instrument("#{channel}.gouda", options, &block)
   end
-
 
   def self.create_tables(active_record_schema)
     active_record_schema.create_enum :gouda_workload_state, %w[enqueued executing finished]
