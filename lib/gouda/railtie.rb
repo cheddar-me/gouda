@@ -43,14 +43,10 @@ module Gouda
           Gouda.config.preserve_job_records = config_from_rails[:preserve_job_records]
           Gouda.config.polling_sleep_interval_seconds = config_from_rails[:polling_sleep_interval_seconds]
           Gouda.config.worker_thread_count = config_from_rails[:worker_thread_count]
-          if Gouda.config.logger
-            Gouda.config.logger.level = config_from_rails[:log_level] || Gouda.config.log_level
-          end
         end
       else
         Gouda.config.preserve_job_records = false
         Gouda.config.polling_sleep_interval_seconds = 0.2
-        Gouda.config.logger.level = Gouda.config.log_level
       end
 
       Gouda::Scheduler.build_scheduler_entries_list!

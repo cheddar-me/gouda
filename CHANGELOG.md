@@ -48,3 +48,7 @@
 ## [0.1.10] - 2024-07-03
 
 - Fix: remove logger overrides that Gouda should install, as this causes problems for Rails apps hosting Gouda
+
+## [0.1.11] - 2024-07-03
+
+- Fix: make sure the Gouda logger config does not get used during Rails initialization
