@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ["sebastian@cheddar.me", "me@julik.nl"]
   spec.homepage = "https://github.com/cheddar-me/gouda"
   spec.license = "MIT"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.7.0")
+  spec.required_ruby_version = Gem::Requirement.new(">= 3.1.0")
   spec.require_paths = ["lib"]
 
   spec.metadata["homepage_uri"] = spec.homepage
