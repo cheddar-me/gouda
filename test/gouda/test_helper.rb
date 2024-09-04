@@ -56,27 +56,16 @@ class ActiveSupport::TestCase
     ActiveRecord::Base.connection.execute("TRUNCATE TABLE gouda_job_fuses")
   end
 
-  def test_create_tables
-    ActiveRecord::Base.transaction do
-      ActiveRecord::Base.connection.execute("DROP TABLE gouda_workloads")
-      ActiveRecord::Base.connection.execute("DROP TABLE gouda_job_fuses")
-      # The adapter has to be in a variable as the schema definition is scoped to the migrator, not self
-      ActiveRecord::Schema.define(version: 1) do |via_definer|
-        Gouda.create_tables(via_definer)
-      end
-    end
-  end
-
   def subscribed_notification_for(notification)
     payload = nil
-    subscription = ActiveSupport::Notifications.subscribe notification do |name, start, finish, id, _payload|
-      payload = _payload
+    subscription = ActiveSupport::Notifications.subscribe notification do |name, start, finish, id, local_payload|
+      payload = local_payload
     end
 
     yield
 
     ActiveSupport::Notifications.unsubscribe(subscription)
 
-    return payload
+    payload
   end
 end

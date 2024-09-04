@@ -142,6 +142,45 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
     assert_equal [nil, nil], Gouda::Workload.first.serialized_params["arguments"]
   end
 
+  test "ensures a job that was scheduled but no longer present in the cron table gets force-finished without executing" do
+    tab = {
+      first_hourly: {
+        cron: "@hourly",
+        class: "GoudaSchedulerTest::TestJob",
+        args: [nil, nil]
+      }
+    }
+
+    assert_nothing_raised do
+      Gouda::Scheduler.build_scheduler_entries_list!(tab)
+    end
+
+    Gouda::Workload.delete_all
+    assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
+      Gouda::Scheduler.upsert_workloads_from_entries_list!
+    end
+
+    # Update all workloads so that it is already time for it to be executed (as we use clock_timestamp()
+    # time travel is not possible in those tests)
+    Gouda::Workload.update_all(scheduled_at: Time.now - 2.minutes)
+
+    workload = Gouda::Workload.checkout_and_lock_one(executing_on: "test")
+    assert workload # Now this workload does get selected for execution
+    workload.update(state: "enqueued") # Return it to the queue
+
+    # Erase the crontab.
+    # No need to enqueue next jobs in this test as there would not be jobs enqueued anyway
+    assert_nothing_raised do
+      Gouda::Scheduler.build_scheduler_entries_list!({})
+    end
+
+    assert_nil Gouda::Workload.checkout_and_lock_one(executing_on: "test"), "The workload should not be picked for execution now"
+    just_finished_workload = Gouda::Workload.where(state: "finished").first!
+    assert_equal "finished", just_finished_workload.state
+    assert just_finished_workload.error
+    assert_match(/scheduler/, just_finished_workload.error.fetch("message"))
+  end
+
   test "is able to accept a crontab" do
     tab = {
       first_hourly: {

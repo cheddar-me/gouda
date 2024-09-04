@@ -87,7 +87,7 @@ module Gouda::Scheduler
   # @return Array[Entry]
   def self.build_scheduler_entries_list!(cron_table_hash = nil)
     Gouda.logger.info "Updating scheduled workload entries..."
-    if cron_table_hash.blank?
+    if cron_table_hash.nil? # An empty hash indicates that an empty crontab will be loaded
       config_from_rails = Rails.application.config.try(:gouda)
 
       cron_table_hash = if config_from_rails.present?
@@ -106,6 +106,9 @@ module Gouda::Scheduler
       params_with_defaults = defaults.merge(cron_entry_params)
       Entry.new(name: name, **params_with_defaults)
     end
+    @known_scheduler_keys = Set.new(@cron_table.map(&:scheduler_key))
+
+    @cron_table
   end
 
   # Once a workload has finished (doesn't matter whether it raised an exception
@@ -132,6 +135,14 @@ module Gouda::Scheduler
     @cron_table || []
   end
 
+  # Returns the set of known scheduler keys that may be present in the workloads table and are defined
+  # by the current entries.
+  #
+  # @return Set[String]
+  def self.known_scheduler_keys
+    @known_scheduler_keys || Set.new
+  end
+
   # Will upsert (`INSERT ... ON CONFLICT UPDATE`) workloads for all entries which are in the scheduler entries
   # table (the table needs to be read or hydrated first using `build_scheduler_entries_list!`). This is done
   # in a transaction. Any workloads which have been previously inserted from the scheduled entries, but no
@@ -143,9 +154,11 @@ module Gouda::Scheduler
   def self.upsert_workloads_from_entries_list!
     table_entries = @cron_table || []
 
-    # Remove any cron keyed workloads which no longer match config-wise
+    # Remove any cron keyed workloads which no longer match config-wise.
+    # We do this to keep things clean (but it is not enough, an extra guard is needed in Workload checkout)
     known_keys = table_entries.map(&:scheduler_key).uniq
     Gouda::Workload.transaction do
+      # We do this to keep things a bit clean
       Gouda::Workload.where.not(scheduler_key: known_keys).delete_all
 
       # Insert the next iteration for every "next" entry in the crontab.
