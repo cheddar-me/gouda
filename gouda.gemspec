@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "activesupport", "~> 7"
   spec.add_dependency "railties", "~> 7"
   spec.add_dependency "activejob", "~> 7"
-  spec.add_dependency "fugit", "~> 1.10.1"
+  spec.add_dependency "fugit", "~> 1.10"
 
   spec.add_development_dependency "pg"
   spec.add_development_dependency "debug"

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+## [0.1.14] - 2024-09-03
+
+- Relax `fugit` dependency to allow updates
 
 ## [0.1.13] - 2024-09-03
 
