@@ -16,20 +16,30 @@ class Gouda::Workload < ActiveRecord::Base
   ZOMBIE_MAX_THRESHOLD = "5 minutes"
 
   self.table_name = "gouda_workloads"
+
   # GoodJob calls these "enqueued" but they are more like
   # "waiting to start" - jobs which have been scheduled past now,
   # or haven't been scheduled to a particular time, are in the "enqueued"
-  # state and match the queue constraint
+  # state and match the queue constraint. Jobs which have fuses set are
+  # excluded from this scope, as well as jobs which have been scheduled
+  # but are no longer present in the schedule.
+  # The scope can be used to call `count()` to obtain the queue depth, which can
+  # be employed as a driving metric for autoscaling.
   scope :waiting_to_start, ->(queue_constraint: Gouda::AnyQueue) {
+    known_scheduler_keys = [nil] + Gouda::Scheduler.known_scheduler_keys.to_a
+    known_scheduler_keys_condition = known_scheduler_keys.map {|key| connection.quote(key) }.join(", ")
     condition_for_ready_to_execute_jobs = <<~SQL
       #{queue_constraint.to_sql}
       AND execution_concurrency_key NOT IN (
         SELECT execution_concurrency_key FROM #{quoted_table_name} WHERE state = 'executing' AND execution_concurrency_key IS NOT NULL
       )
+      AND active_job_class_name NOT IN (
+        SELECT active_job_class_name FROM gouda_job_fuses
+      )
+      AND (scheduler_key IS NULL OR scheduler_key IN (#{known_scheduler_keys_condition}))
       AND state = 'enqueued'
       AND (scheduled_at <= clock_timestamp())
     SQL
-
     where(Arel.sql(condition_for_ready_to_execute_jobs))
   }
 
@@ -91,31 +101,28 @@ class Gouda::Workload < ActiveRecord::Base
   def self.checkout_and_lock_one(executing_on:, queue_constraint: Gouda::AnyQueue)
     where_query = <<~SQL
       #{queue_constraint.to_sql}
-      AND workloads.state = 'enqueued'
       AND NOT EXISTS (
         SELECT NULL
         FROM #{quoted_table_name} AS concurrent
         WHERE concurrent.state = 'executing'
-          AND concurrent.execution_concurrency_key = workloads.execution_concurrency_key
+          AND concurrent.execution_concurrency_key = #{quoted_table_name}.execution_concurrency_key
       )
-      AND workloads.scheduled_at <= clock_timestamp()
     SQL
     # Enter a txn just to mark this job as being executed "by us". This allows us to avoid any
     # locks during execution itself, including advisory locks
-    workloads = Gouda::Workload
-      .select("workloads.*")
-      .from("#{quoted_table_name} AS workloads")
+    workloads_rel = Gouda::Workload
+      .waiting_to_start
       .where(where_query)
-      .order("workloads.priority ASC NULLS LAST")
+      .order("#{quoted_table_name}.priority ASC NULLS LAST")
       .lock("FOR UPDATE SKIP LOCKED")
       .limit(1)
 
     _first_available_workload = ActiveSupport::Notifications.instrument(:checkout_and_lock_one, {queue_constraint: queue_constraint.to_sql}) do |payload|
-      payload[:condition_sql] = workloads.to_sql
+      payload[:condition_sql] = workloads_rel.to_sql
       payload[:retried_checkouts_due_to_concurrent_exec] = 0
       uncached do # Necessary because we SELECT with a clock_timestamp() which otherwise gets cached by ActiveRecord query cache
         transaction do
-          workload = Gouda.suppressing_sql_logs { workloads.first } # Silence SQL output as this gets called very frequently
+          workload = Gouda.suppressing_sql_logs { workloads_rel.first } # Silence SQL output as this gets called very frequently
           return nil unless workload
 
           if workload.scheduler_key && !Gouda::Scheduler.known_scheduler_keys.include?(workload.scheduler_key)
