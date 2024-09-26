@@ -44,7 +44,7 @@ class Gouda::Workload < ActiveRecord::Base
     # So even if we remove the crontabled workloads during app boot, it does not give us a guarantee
     # that release 1 won't reinsert them.
     # This is why this safeguard is needed.
-    known_scheduler_keys = [nil] + Gouda::Scheduler.known_scheduler_keys.to_a
+    known_scheduler_keys = Gouda::Scheduler.known_scheduler_keys.to_a
     known_scheduler_keys_condition = known_scheduler_keys.map { |key| connection.quote(key) }.join(", ")
     condition_for_ready_to_execute_jobs = <<~SQL
       #{queue_constraint.to_sql}
