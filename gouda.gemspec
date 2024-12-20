@@ -20,10 +20,10 @@ Gem::Specification.new do |spec|
     `git ls-files -z`.split("\x0")
   end
 
-  spec.add_dependency "activerecord", "~> 7"
-  spec.add_dependency "activesupport", "~> 7"
-  spec.add_dependency "railties", "~> 7"
-  spec.add_dependency "activejob", "~> 7"
+  spec.add_dependency "activerecord", "~> 8"
+  spec.add_dependency "activesupport", "~> 8"
+  spec.add_dependency "railties", "~> 8"
+  spec.add_dependency "activejob", "~> 8"
   spec.add_dependency "fugit", "~> 1.10"
 
   spec.add_development_dependency "pg"
