@@ -7,14 +7,14 @@ Gem::Specification.new do |spec|
   spec.description = "Job Scheduler for Rails and PostgreSQL"
   spec.authors = ["Sebastian van Hesteren", "Julik Tarkhanov"]
   spec.email = ["sebastian@cheddar.me", "me@julik.nl"]
-  spec.homepage = "https://github.com/cheddar-me/gouda"
   spec.license = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 3.1.0")
   spec.require_paths = ["lib"]
 
+  spec.homepage = "https://github.com/cheddar-me/gouda"
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
-  spec.metadata["changelog_uri"] = "https://github.com/cheddar-me/gouda/blob/main/CHANGELOG.md"
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     `git ls-files -z`.split("\x0")
