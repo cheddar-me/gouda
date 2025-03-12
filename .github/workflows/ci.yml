@@ -33,6 +33,14 @@ jobs:
   test_rails7:
     name: "Tests (Rails 7)"
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        ports:
+          - 5432:5432
     env:
       BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/rails_7.gemfile
     steps:
@@ -54,6 +62,14 @@ jobs:
   test_rails_8:
     name: "Tests (Rails 8)"
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        ports:
+          - 5432:5432
     env:
       BUNDLE_GEMFILE: ${{ github.workspace }}/gemfiles/rails_8.gemfile
     steps:
