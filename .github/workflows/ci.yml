@@ -14,8 +14,7 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '3.2'
-          - '3.3'
+          - '3.2.2'
     services:
       postgres:
         image: postgres
