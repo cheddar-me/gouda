@@ -64,7 +64,7 @@ module Gouda
   def self.logger
     # By default, return a logger that sends data nowhere. The `Rails.logger` method
     # only becomes available later in the Rails lifecycle.
-    @fallback_gouda_logger ||= ActiveSupport::Logger.new($stdout).tap do |logger|
+    @fallback_gouda_logger ||= ActiveSupport::TaggedLogging.new(Logger.new($stdout)).tap do |logger|
       logger.level = Logger::WARN
     end
 
@@ -76,7 +76,8 @@ module Gouda
     # it is the choice of the user to do so - and we should honor that choice. Same for
     # the logging level - the Rails logger level must take precendence. Same for logger
     # broadcasts which get set up, for example, by the Rails console when you start it.
-    Rails.try(:logger) || ActiveJob::Base.try(:logger) || @fallback_gouda_logger
+    logger_to_use = Rails.try(:logger) || ActiveJob::Base.try(:logger) || @fallback_gouda_logger
+    logger_to_use.tagged("Gouda") # So that we don't have to manually prefix/tag on every call
   end
 
   def self.suppressing_sql_logs(&)
@@ -86,7 +87,7 @@ module Gouda
     # in a side-thread inside Puma - the output might be quite annoying. So silence the
     # logger when we poll, but just to INFO. Omitting DEBUG-level messages gets rid of the SQL.
     if Gouda::Workload.logger
-      Gouda::Workload.logger.silence(Logger::INFO, &)
+      Gouda::Workload.logger.silence(Logger::DEBUG, &)
     else
       # In tests (and at earlier stages of the Rails boot cycle) the global ActiveRecord logger may be nil
       yield
