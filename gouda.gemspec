@@ -20,14 +20,16 @@ Gem::Specification.new do |spec|
     `git ls-files -z`.split("\x0")
   end
 
-  spec.add_dependency "activerecord", "~> 7.2"
-  spec.add_dependency "activesupport", "~> 7.2"
-  spec.add_dependency "railties", "~> 7.2"
-  spec.add_dependency "activejob", "~> 7.2"
+  rails_min = ">= 7.2.0"
+  spec.add_dependency "activerecord", rails_min
+  spec.add_dependency "activesupport", rails_min
+  spec.add_dependency "railties", rails_min
+  spec.add_dependency "activejob", rails_min
   spec.add_dependency "fugit", "~> 1.10"
 
   spec.add_development_dependency "standard"
   spec.add_development_dependency "pg"
   spec.add_development_dependency "debug"
   spec.add_development_dependency "pry"
+  spec.add_development_dependency "appraisal"
 end
