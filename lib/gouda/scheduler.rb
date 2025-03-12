@@ -152,20 +152,26 @@ module Gouda::Scheduler
   #
   # @return void
   def self.upsert_workloads_from_entries_list!
-    table_entries = @cron_table || []
+    # If you have a lot of cron tasks, it will produce a pretty long SQL query when upserting - because
+    # we have bulk-insert. This is not very useful to see even in development. It also happens on every
+    # app reload or code change - since we want our table to be repopuated when we reload the Rails app.
+    # So: silence it here.
+    Gouda.suppressing_sql_logs do
+      table_entries = @cron_table || []
 
-    # Remove any cron keyed workloads which no longer match config-wise.
-    # We do this to keep things clean (but it is not enough, an extra guard is needed in Workload checkout)
-    known_keys = table_entries.map(&:scheduler_key).uniq
-    Gouda::Workload.transaction do
-      # We do this to keep things a bit clean
-      Gouda::Workload.where.not(scheduler_key: known_keys).delete_all
+      # Remove any cron keyed workloads which no longer match config-wise.
+      # We do this to keep things clean (but it is not enough, an extra guard is needed in Workload checkout)
+      known_keys = table_entries.map(&:scheduler_key).uniq
+      Gouda::Workload.transaction do
+        # We do this to keep things a bit clean
+        Gouda::Workload.where.not(scheduler_key: known_keys).delete_all
 
-      # Insert the next iteration for every "next" entry in the crontab.
-      active_jobs_to_enqueue = table_entries.filter_map(&:build_active_job)
-      Gouda.logger.info "#{active_jobs_to_enqueue.size} job(s) to enqueue from the scheduler."
-      enqjobs = Gouda.enqueue_jobs_via_their_adapters(active_jobs_to_enqueue)
-      Gouda.logger.info "#{enqjobs.size} scheduled job(s) enqueued."
+        # Insert the next iteration for every "next" entry in the crontab.
+        active_jobs_to_enqueue = table_entries.filter_map(&:build_active_job)
+        Gouda.logger.info "#{active_jobs_to_enqueue.size} job(s) to enqueue from the scheduler."
+        enqjobs = Gouda.enqueue_jobs_via_their_adapters(active_jobs_to_enqueue)
+        Gouda.logger.info "#{enqjobs.size} scheduled job(s) enqueued."
+      end
     end
   end
 end
