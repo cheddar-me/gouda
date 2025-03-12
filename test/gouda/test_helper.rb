@@ -24,6 +24,7 @@ class ActiveSupport::TestCase
     @case_random = Random.new(Minitest.seed)
     Gouda::Railtie.initializers.each(&:run)
     Gouda.logger.level = Logger::WARN
+    ActiveJob::Base.logger.level = Logger::FATAL # Otherwise ActiveJob logs get printed for failing jobs that are tested
   end
 
   teardown do
