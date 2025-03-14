@@ -87,7 +87,7 @@ module Gouda
     # in a side-thread inside Puma - the output might be quite annoying. So silence the
     # logger when we poll, but just to INFO. Omitting DEBUG-level messages gets rid of the SQL.
     if Gouda::Workload.logger
-      Gouda::Workload.logger.silence(Logger::DEBUG, &)
+      Gouda::Workload.logger.silence(Logger::INFO, &)
     else
       # In tests (and at earlier stages of the Rails boot cycle) the global ActiveRecord logger may be nil
       yield

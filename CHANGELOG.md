@@ -1,3 +1,7 @@
+## [0.1.16]
+
+- Actualy suppress DEBUG level logs in `suppressing_sql_logs` :facepalm:
+
 ## [0.1.15]
 
 - Enable Rails 8 dependency versions
