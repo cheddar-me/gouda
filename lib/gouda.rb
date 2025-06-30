@@ -33,7 +33,7 @@ module Gouda
     # that is using Gouda. The config values will be ignored though.
     config_accessor(:logger, default: nil)
     config_accessor(:log_level, default: nil)
-    
+
     # Fiber-specific configuration options
     config_accessor(:fiber_worker_count, default: 1)
     config_accessor(:use_fiber_scheduler, default: false)
@@ -59,26 +59,26 @@ module Gouda
     end
 
     logger.info("Gouda version: #{Gouda::VERSION}")
-    
+
     if Gouda.config.use_fiber_scheduler
       logger.info("Using fiber-based scheduler")
       logger.info("Worker fibers: #{Gouda.config.fiber_worker_count}")
-      
+
       # Configure database pool for fiber concurrency
       FiberDatabaseSupport.configure_async_pool
-      
+
       # Use fiber-based worker
       FiberWorker.worker_loop(
-        n_fibers: Gouda.config.fiber_worker_count, 
+        n_fibers: Gouda.config.fiber_worker_count,
         queue_constraint: queue_constraint
       )
     else
       logger.info("Using thread-based scheduler")
       logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
-      
+
       # Use original thread-based worker
       worker_loop(
-        n_threads: Gouda.config.worker_thread_count, 
+        n_threads: Gouda.config.worker_thread_count,
         queue_constraint: queue_constraint
       )
     end
@@ -178,11 +178,11 @@ module Gouda
       if defined?(ActiveRecord::Base)
         # Increase pool size for fiber concurrency
         ActiveRecord::Base.connection_pool.disconnect!
-        
+
         config = ActiveRecord::Base.connection_db_config.configuration_hash.dup
         config[:pool] = Gouda.config.async_db_pool_size
         config[:checkout_timeout] = 10 # Prevent fiber starvation
-        
+
         ActiveRecord::Base.establish_connection(config)
       end
     end

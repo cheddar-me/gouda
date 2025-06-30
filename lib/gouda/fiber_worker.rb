@@ -49,15 +49,15 @@ module Gouda
         worker_tasks = n_fibers.times.map do |i|
           task.async do |worker_task|
             worker_id_and_fiber_id = [worker_id, "f0x#{Fiber.current.object_id.to_s(16)}"].join("-")
-            
+
             loop do
               break if check_shutdown.call
 
               begin
                 did_process = Gouda.config.app_executor.wrap do
                   Gouda::Workload.checkout_and_perform_one(
-                    executing_on: worker_id_and_fiber_id, 
-                    queue_constraint: queue_constraint, 
+                    executing_on: worker_id_and_fiber_id,
+                    queue_constraint: queue_constraint,
                     in_progress: executing_workload_ids
                   )
                 end
@@ -84,7 +84,7 @@ module Gouda
                 # Update heartbeats for executing jobs
                 Gouda.suppressing_sql_logs do
                   Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing")
-                                 .update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
+                    .update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
                 end
 
                 # Clean up zombie workloads
@@ -114,7 +114,7 @@ module Gouda
       loop do
         return if must_abort_proc.call
         return if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time_seconds >= n_seconds
-        
+
         # Use task.sleep for non-blocking sleep that yields to scheduler
         if task
           task.sleep(check_interval_seconds)
@@ -125,4 +125,4 @@ module Gouda
       end
     end
   end
-end 
+end
