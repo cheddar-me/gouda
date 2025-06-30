@@ -72,7 +72,7 @@ to **prevent concurrent executions** but not to **limit the load on the system**
 
 ## Key concepts in Gouda: `executing_on`
 
-A `Workload` is executing on a particular `executing_on` entity - usually a worker thread. That entity gets a pseudorandom ID . The `executing_on` value can be used to see, for example, whether a particular worker thread has hung. If multiple jobs have a far-behind `updated_at` and are all `executing`, this likely means that the worker has crashed or hung. The value can also be used to build a table of currently running workers.
+A `Workload` is executing on a particular `executing_on` entity - usually a worker thread or fiber. That entity gets a pseudorandom ID. The `executing_on` value can be used to see, for example, whether a particular worker thread has hung. If multiple jobs have a far-behind `updated_at` and are all `executing`, this likely means that the worker has crashed or hung. The value can also be used to build a table of currently running workers.
 
 ## Usage tips: bulkify your enqueues
 
@@ -102,6 +102,54 @@ User.transaction do
   WelcomeMailer.with(user: freshly_joined_user).welcome_email.deliver_later
 end
 ```
+
+## Fiber-based Non-blocking IO
+
+Gouda supports both traditional thread-based and modern fiber-based execution modes. The fiber-based mode provides non-blocking IO capabilities for better performance with IO-bound jobs.
+
+### Configuration
+
+To enable fiber-based execution:
+
+```ruby
+Gouda.configure do |config|
+  # Enable fiber-based scheduler
+  config.use_fiber_scheduler = true
+  
+  # Number of worker fibers (can be higher than CPU cores)
+  config.fiber_worker_count = 10
+  
+  # Database connection pool size for fiber concurrency
+  config.async_db_pool_size = 25
+end
+```
+
+### Benefits
+
+- **Non-blocking IO**: Database queries, HTTP requests, and file operations don't block other jobs
+- **Higher concurrency**: Can handle more concurrent jobs with less memory overhead than threads
+- **Better resource utilization**: Cooperative scheduling reduces context switching overhead
+- **Backward compatibility**: Thread-based mode remains the default and continues to work
+
+### Requirements
+
+- Ruby 3.1+ with Fiber.scheduler support
+- `async` gem dependency (automatically included)
+- Async-compatible gems for full benefit
+
+### When to use fibers vs threads
+
+**Use fiber-based execution for:**
+- IO-bound jobs (HTTP requests, database queries, file processing)
+- High-concurrency scenarios
+- Jobs that spend time waiting for external resources
+
+**Use thread-based execution for:**
+- CPU-intensive jobs
+- Jobs that use gems without async support
+- Simpler deployment scenarios
+
+You can even run both modes simultaneously with different queue constraints to optimize for different job types.
 
 ## Web UI
 

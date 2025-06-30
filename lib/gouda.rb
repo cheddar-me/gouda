@@ -10,6 +10,7 @@ require_relative "gouda/scheduler"
 require_relative "gouda/railtie" if defined?(Rails::Railtie)
 require_relative "gouda/workload"
 require_relative "gouda/worker"
+require_relative "gouda/fiber_worker"
 require_relative "gouda/job_fuse"
 require_relative "gouda/queue_constraints"
 require_relative "gouda/active_job_extensions/interrupts"
@@ -32,6 +33,11 @@ module Gouda
     # that is using Gouda. The config values will be ignored though.
     config_accessor(:logger, default: nil)
     config_accessor(:log_level, default: nil)
+    
+    # Fiber-specific configuration options
+    config_accessor(:fiber_worker_count, default: 1)
+    config_accessor(:use_fiber_scheduler, default: false)
+    config_accessor(:async_db_pool_size, default: 25)
   end
 
   class InterruptError < StandardError
@@ -41,6 +47,11 @@ module Gouda
   end
 
   def self.start
+    start_with_scheduler_type
+  end
+
+  # Enhanced start method that chooses between thread and fiber execution
+  def self.start_with_scheduler_type
     queue_constraint = if ENV["GOUDA_QUEUES"]
       Gouda.parse_queue_constraint(ENV["GOUDA_QUEUES"])
     else
@@ -48,9 +59,29 @@ module Gouda
     end
 
     logger.info("Gouda version: #{Gouda::VERSION}")
-    logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
-
-    worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint: queue_constraint)
+    
+    if Gouda.config.use_fiber_scheduler
+      logger.info("Using fiber-based scheduler")
+      logger.info("Worker fibers: #{Gouda.config.fiber_worker_count}")
+      
+      # Configure database pool for fiber concurrency
+      FiberDatabaseSupport.configure_async_pool
+      
+      # Use fiber-based worker
+      FiberWorker.worker_loop(
+        n_fibers: Gouda.config.fiber_worker_count, 
+        queue_constraint: queue_constraint
+      )
+    else
+      logger.info("Using thread-based scheduler")
+      logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
+      
+      # Use original thread-based worker
+      worker_loop(
+        n_threads: Gouda.config.worker_thread_count, 
+        queue_constraint: queue_constraint
+      )
+    end
   end
 
   def self.config
@@ -72,7 +103,7 @@ module Gouda
     # is just an ActiveJob adapter and the Workload is just an ActiveRecord, in the end.
     # So it should be up to the developer of the app, not to us, to set the logger up
     # and configure out. There are also gems such as "stackdriver" from Google which
-    # rather unceremonously overwrite the Rails logger with their own. If that happens,
+    # rather unceremoniously overwrite the Rails logger with their own. If that happens,
     # it is the choice of the user to do so - and we should honor that choice. Same for
     # the logging level - the Rails logger level must take precendence. Same for logger
     # broadcasts which get set up, for example, by the Rails console when you start it.
@@ -137,6 +168,23 @@ module Gouda
       t.string :active_job_class_name, null: false
 
       t.timestamps
+    end
+  end
+
+  # Fiber-aware database connection pool configuration
+  module FiberDatabaseSupport
+    def self.configure_async_pool
+      # Configure ActiveRecord for async operations
+      if defined?(ActiveRecord::Base)
+        # Increase pool size for fiber concurrency
+        ActiveRecord::Base.connection_pool.disconnect!
+        
+        config = ActiveRecord::Base.connection_db_config.configuration_hash.dup
+        config[:pool] = Gouda.config.async_db_pool_size
+        config[:checkout_timeout] = 10 # Prevent fiber starvation
+        
+        ActiveRecord::Base.establish_connection(config)
+      end
     end
   end
 end
