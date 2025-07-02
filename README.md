@@ -72,7 +72,20 @@ to **prevent concurrent executions** but not to **limit the load on the system**
 
 ## Key concepts in Gouda: `executing_on`
 
-A `Workload` is executing on a particular `executing_on` entity - usually a worker thread or fiber. That entity gets a pseudorandom ID. The `executing_on` value can be used to see, for example, whether a particular worker thread has hung. If multiple jobs have a far-behind `updated_at` and are all `executing`, this likely means that the worker has crashed or hung. The value can also be used to build a table of currently running workers.
+A `Workload` is executing on a particular `executing_on` entity - usually a worker thread or fiber. That entity gets a pseudorandom ID. The `executing_on` value can be used to see, for example, whether a particular worker thread has hung. If multiple jobs have a far-behind `updated_at` and are all `executing`, this likely means that the worker executing them has died or has hung.
+
+The `executing_on` field now clearly indicates the execution context:
+- Thread-based execution: `hostname-pid-uuid-thread-abc123` 
+- Fiber-based execution: `hostname-pid-uuid-fiber-def456`
+
+You can programmatically check the execution context:
+
+```ruby
+workload = Gouda::Workload.last
+workload.executed_on_thread?  # => true/false
+workload.executed_on_fiber?   # => true/false  
+workload.execution_context    # => :thread, :fiber, or :unknown
+```
 
 ## Usage tips: bulkify your enqueues
 
@@ -107,6 +120,34 @@ end
 
 Gouda supports both traditional thread-based and modern fiber-based execution modes. The fiber-based mode provides non-blocking IO capabilities for better performance with IO-bound jobs.
 
+### Requirements
+
+- Ruby 3.1+ with Fiber.scheduler support
+- `async` gem dependency (automatically included)
+- **Rails isolation level set to `:fiber`** (critical for fiber mode)
+- Async-compatible gems for full benefit
+
+### Critical Configuration for Fiber Mode
+
+**⚠️ IMPORTANT**: When using fiber-based execution **with PostgreSQL**, you **must** configure Rails to use fiber-based isolation:
+
+```ruby
+# config/application.rb
+class Application < Rails::Application
+  # This is REQUIRED for Gouda fiber mode with PostgreSQL
+  config.active_support.isolation_level = :fiber
+end
+```
+
+**Why this matters for PostgreSQL:**
+- Prevents segmentation faults with Ruby 3.4+ and PostgreSQL adapter
+- Ensures ActiveRecord connection pools work correctly with fibers and PostgreSQL connections
+- Required for proper fiber-based concurrency with PostgreSQL's connection handling
+
+**Note**: This configuration is specifically required when using PostgreSQL. Other database adapters may not have the same requirement, but setting it to `:fiber` is generally safe and recommended when using Gouda's fiber mode.
+
+Gouda will automatically detect if this setting is missing when using PostgreSQL and warn you during startup.
+
 ### Configuration
 
 To enable fiber-based execution:
@@ -131,11 +172,18 @@ end
 - **Better resource utilization**: Cooperative scheduling reduces context switching overhead
 - **Backward compatibility**: Thread-based mode remains the default and continues to work
 
-### Requirements
+### Database Pool Configuration
 
-- Ruby 3.1+ with Fiber.scheduler support
-- `async` gem dependency (automatically included)
-- Async-compatible gems for full benefit
+For optimal fiber-based performance, ensure your database connection pool is sized appropriately:
+
+```yaml
+# config/database.yml
+development:
+  pool: 25  # Should be >= fiber_worker_count + some buffer
+  checkout_timeout: 10
+```
+
+The fiber worker will check your pool size and warn if it might be too small. A pool that's too small won't cause crashes, but may reduce concurrency as fibers wait for database connections.
 
 ### When to use fibers vs threads
 

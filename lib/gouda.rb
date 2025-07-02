@@ -64,9 +64,10 @@ module Gouda
       logger.info("Using fiber-based scheduler")
       logger.info("Worker fibers: #{Gouda.config.fiber_worker_count}")
 
-      # Configure database pool for fiber concurrency
-      FiberDatabaseSupport.configure_async_pool
-
+      # Check database pool configuration (non-destructive)
+      FiberDatabaseSupport.check_pool_configuration
+      FiberDatabaseSupport.check_fiber_isolation_level
+      
       # Use fiber-based worker
       FiberWorker.worker_loop(
         n_fibers: Gouda.config.fiber_worker_count,
@@ -171,20 +172,70 @@ module Gouda
     end
   end
 
-  # Fiber-aware database connection pool configuration
+  # Database configuration helpers for fiber mode
   module FiberDatabaseSupport
-    def self.configure_async_pool
-      # Configure ActiveRecord for async operations
-      if defined?(ActiveRecord::Base)
-        # Increase pool size for fiber concurrency
-        ActiveRecord::Base.connection_pool.disconnect!
-
-        config = ActiveRecord::Base.connection_db_config.configuration_hash.dup
-        config[:pool] = Gouda.config.async_db_pool_size
-        config[:checkout_timeout] = 10 # Prevent fiber starvation
-
-        ActiveRecord::Base.establish_connection(config)
+    def self.check_pool_configuration
+      return unless defined?(ActiveRecord::Base)
+      
+      current_pool_size = ActiveRecord::Base.connection_pool.size
+      desired_pool_size = Gouda.config.async_db_pool_size
+      
+      if current_pool_size < desired_pool_size
+        logger.warn("Database pool size (#{current_pool_size}) may be too small for fiber concurrency")
+        logger.warn("Consider increasing pool size to #{desired_pool_size} in database.yml")
+        logger.warn("Current pool size should work but may cause fiber blocking on DB connections")
+      else
+        logger.info("Database pool size (#{current_pool_size}) is sufficient for fiber concurrency")
       end
+    rescue => e
+      logger.warn("Could not check database pool configuration: #{e.message}")
+    end
+
+    def self.check_fiber_isolation_level
+      return unless defined?(Rails) && Rails.respond_to?(:application) && Rails.application
+
+      begin
+        current_isolation = ActiveSupport.isolation_level
+        
+        # Check if we're using PostgreSQL
+        using_postgresql = false
+        begin
+          if defined?(ActiveRecord::Base) && ActiveRecord::Base.connection.adapter_name == 'PostgreSQL'
+            using_postgresql = true
+          end
+        rescue => e
+          # If we can't determine the adapter, assume we might be using PostgreSQL to be safe
+          using_postgresql = true
+        end
+        
+        if current_isolation != :fiber && using_postgresql
+          logger.warn("=" * 80)
+          logger.warn("FIBER SCHEDULER CONFIGURATION WARNING")
+          logger.warn("=" * 80)
+          logger.warn("Gouda fiber mode is enabled with PostgreSQL but Rails isolation level is set to: #{current_isolation}")
+          logger.warn("For optimal fiber-based performance and to avoid potential issues with PostgreSQL,")
+          logger.warn("you should set the Rails isolation level to :fiber")
+          logger.warn("")
+          logger.warn("Add this to your config/application.rb:")
+          logger.warn("  config.active_support.isolation_level = :fiber")
+          logger.warn("")
+          logger.warn("This ensures ActiveRecord connection pools work correctly with fibers")
+          logger.warn("and PostgreSQL connections, and can prevent segfaults with Ruby 3.4+.")
+          logger.warn("=" * 80)
+        elsif current_isolation == :fiber
+          logger.info("Rails isolation level correctly set to :fiber for fiber-based execution")
+        elsif !using_postgresql
+          logger.info("Non-PostgreSQL database detected - isolation level configuration may not be required")
+        end
+      rescue => e
+        logger.warn("Could not check Rails isolation level: #{e.message}")
+      end
+    end
+    
+    private
+    
+    def self.logger
+      Gouda.logger
     end
   end
 end

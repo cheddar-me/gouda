@@ -48,7 +48,7 @@ module Gouda
         # Create worker fibers instead of threads
         worker_tasks = n_fibers.times.map do |i|
           task.async do |worker_task|
-            worker_id_and_fiber_id = [worker_id, "f0x#{Fiber.current.object_id.to_s(16)}"].join("-")
+            worker_id_and_fiber_id = [worker_id, "fiber-#{Fiber.current.object_id.to_s(16)}"].join("-")
 
             loop do
               break if check_shutdown.call

@@ -131,7 +131,7 @@ module Gouda
     raise ArgumentError, "You need at least 1 worker thread, but you requested #{n_threads}" if n_threads < 1
     worker_threads = n_threads.times.map do
       Thread.new do
-        worker_id_and_thread_id = [worker_id, "t0x#{Thread.current.object_id.to_s(16)}"].join("-")
+        worker_id_and_thread_id = [worker_id, "thread-#{Thread.current.object_id.to_s(16)}"].join("-")
         loop do
           break if check_shutdown.call
 

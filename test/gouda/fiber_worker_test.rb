@@ -142,8 +142,8 @@ class FiberWorkerTest < ActiveSupport::TestCase
     finished_workload = Gouda::Workload.finished.last
     assert_not_nil finished_workload
 
-    # Check that executing_on contains fiber identifier (should contain 'f0x' for fiber)
-    assert_includes finished_workload.executing_on, "f0x"
+    # Check that executing_on contains fiber identifier (should contain 'fiber-' for fiber)
+    assert_includes finished_workload.executing_on, "fiber-"
 
     # Verify the job executed
     assert_equal 1, File.size(PATH_TO_FIBER_TEST_FILE.call)
@@ -179,7 +179,7 @@ class FiberWorkerTest < ActiveSupport::TestCase
     executing_on_values = Gouda::Workload.finished.pluck(:executing_on).uniq
     assert_operator executing_on_values.size, :>=, 1
     executing_on_values.each do |executing_on|
-      assert_includes executing_on, "f0x", "Expected fiber identifier in executing_on: #{executing_on}"
+      assert_includes executing_on, "fiber-", "Expected fiber identifier in executing_on: #{executing_on}"
     end
   end
 
@@ -202,5 +202,113 @@ class FiberWorkerTest < ActiveSupport::TestCase
     assert_equal false, Gouda.config.use_fiber_scheduler
   ensure
     Gouda.config.use_fiber_scheduler = original_use_fiber_scheduler
+  end
+
+  test "warns when Rails isolation level is not set to fiber" do
+    # Skip if we don't have Rails or ActiveSupport configured
+    skip "Test requires Rails environment" unless defined?(Rails) && Rails.respond_to?(:application)
+
+    original_isolation = ActiveSupport.isolation_level rescue nil
+    
+    # Set isolation level to something other than :fiber
+    ActiveSupport.isolation_level = :thread
+    
+    # Capture log output using a simple array instead of StringIO
+    original_logger = Gouda.instance_variable_get(:@fallback_gouda_logger)
+    
+    # Create a logger that captures messages in our array
+    test_logger = ActiveSupport::TaggedLogging.new(Logger.new("/dev/null"))
+    test_logger.level = Logger::WARN
+    
+    # Override the warn method to capture messages
+    def test_logger.warn(message)
+      @captured_messages ||= []
+      @captured_messages << message
+    end
+    
+    def test_logger.captured_messages
+      @captured_messages || []
+    end
+    
+    Gouda.instance_variable_set(:@fallback_gouda_logger, test_logger)
+    
+    # This should trigger the warning
+    Gouda::FiberDatabaseSupport.check_fiber_isolation_level
+    
+    captured_messages = test_logger.captured_messages
+    
+    # Check that the warning was logged
+    warning_found = captured_messages.any? { |msg| msg.include?("FIBER SCHEDULER CONFIGURATION WARNING") }
+    assert warning_found, "Expected fiber scheduler warning to be logged"
+    
+    isolation_warning_found = captured_messages.any? { |msg| msg.include?("Rails isolation level is set to: thread") }
+    assert isolation_warning_found, "Expected isolation level warning to be logged"
+    
+    postgres_warning_found = captured_messages.any? { |msg| msg.include?("prevent segfaults with Ruby 3.4+ and PostgreSQL") }
+    assert postgres_warning_found, "Expected PostgreSQL-specific warning to be logged"
+  ensure
+    # Restore original isolation level if it was set
+    if original_isolation
+      ActiveSupport.isolation_level = original_isolation
+    end
+    # Restore original logger
+    if original_logger
+      Gouda.instance_variable_set(:@fallback_gouda_logger, original_logger)
+    end
+  end
+
+  test "does not warn when Rails isolation level is correctly set to fiber" do
+    # Skip if we don't have Rails or ActiveSupport configured
+    skip "Test requires Rails environment" unless defined?(Rails) && Rails.respond_to?(:application)
+
+    original_isolation = ActiveSupport.isolation_level rescue nil
+    
+    # Set isolation level to :fiber
+    ActiveSupport.isolation_level = :fiber
+    
+    # Capture log output using a simple array instead of StringIO
+    original_logger = Gouda.instance_variable_get(:@fallback_gouda_logger)
+    
+    # Create a logger that captures messages in our array
+    test_logger = ActiveSupport::TaggedLogging.new(Logger.new("/dev/null"))
+    test_logger.level = Logger::INFO
+    
+    # Override the info method to capture messages
+    def test_logger.info(message)
+      @captured_messages ||= []
+      @captured_messages << message
+    end
+    
+    def test_logger.warn(message)
+      @captured_messages ||= []
+      @captured_messages << message
+    end
+    
+    def test_logger.captured_messages
+      @captured_messages || []
+    end
+    
+    Gouda.instance_variable_set(:@fallback_gouda_logger, test_logger)
+    
+    # This should not trigger a warning
+    Gouda::FiberDatabaseSupport.check_fiber_isolation_level
+    
+    captured_messages = test_logger.captured_messages
+    
+    # Check that no warning was logged, but info message was
+    warning_found = captured_messages.any? { |msg| msg.include?("FIBER SCHEDULER CONFIGURATION WARNING") }
+    refute warning_found, "Did not expect fiber scheduler warning to be logged"
+    
+    info_found = captured_messages.any? { |msg| msg.include?("Rails isolation level correctly set to :fiber") }
+    assert info_found, "Expected confirmation info message to be logged"
+  ensure
+    # Restore original isolation level if it was set
+    if original_isolation
+      ActiveSupport.isolation_level = original_isolation
+    end
+    # Restore original logger
+    if original_logger
+      Gouda.instance_variable_set(:@fallback_gouda_logger, original_logger)
+    end
   end
 end

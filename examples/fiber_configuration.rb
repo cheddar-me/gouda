@@ -1,27 +1,48 @@
-# Example configuration for using Gouda with fiber-based non-blocking IO
+# Example configuration for Gouda fiber-based job processing
+# This shows how to properly configure Rails and Gouda for optimal fiber performance
 
-# In your Rails configuration or initializer:
+# CRITICAL: Set Rails isolation level to :fiber (config/application.rb)
+# This MUST be set when using PostgreSQL to prevent segfaults and ensure proper fiber concurrency
+# 
+# # config/application.rb
+# class Application < Rails::Application
+#   # Required for fiber mode with PostgreSQL - prevents segfaults and connection issues
+#   config.active_support.isolation_level = :fiber
+# end
+
+# Gouda fiber configuration
 Gouda.configure do |config|
-  # Enable fiber-based scheduler instead of thread-based
+  # Enable fiber-based worker (instead of threads)
   config.use_fiber_scheduler = true
-
-  # Number of worker fibers (can be higher than CPU cores since they're non-blocking)
+  
+  # Number of concurrent worker fibers
+  # Can be higher than CPU cores since fibers are lightweight for IO-bound work
   config.fiber_worker_count = 10
-
-  # Database connection pool size for fiber concurrency
-  # Should be >= fiber_worker_count + 1 (for housekeeping)
+  
+  # Database connection pool size
+  # Should be >= fiber_worker_count + buffer for other Rails processes
   config.async_db_pool_size = 25
-
-  # Polling interval (how often to check for new jobs when queue is empty)
-  config.polling_sleep_interval_seconds = 0.1
-
-  # Other existing configuration options still work
-  config.preserve_job_records = false
+  
+  # Other standard Gouda configuration options work the same
+  config.preserve_job_records = true
   config.cleanup_preserved_jobs_before = 3.hours
 end
 
-# Example of starting the worker with fibers:
+# Database configuration should also be updated (config/database.yml)
+# 
+# development:
+#   adapter: postgresql
+#   database: myapp_development
+#   pool: 25              # Should match or exceed async_db_pool_size
+#   checkout_timeout: 10  # Timeout for getting connections from pool
+
+# Example of starting the fiber-based worker
 # Gouda.start
+
+# The worker will automatically:
+# 1. Check that Rails isolation level is set to :fiber (warn if not)
+# 2. Check that database pool size is sufficient (warn if too small) 
+# 3. Use fiber-based concurrency for non-blocking IO
 
 # Benefits of fiber-based approach:
 # 1. Non-blocking IO operations (database queries, HTTP requests, etc.)
@@ -34,3 +55,4 @@ end
 # 2. Database connection pool size should be configured appropriately
 # 3. CPU-intensive jobs won't benefit much from fiber approach
 # 4. Requires Ruby 3.1+ with Fiber.scheduler support
+# 5. When using PostgreSQL: Rails isolation level MUST be set to :fiber
