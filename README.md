@@ -123,7 +123,7 @@ Gouda supports both traditional thread-based and modern fiber-based execution mo
 ### Requirements
 
 - Ruby 3.1+ with Fiber.scheduler support
-- `async` gem dependency (automatically included)
+- `async` gem dependency (~> 2.25, automatically included)
 - **Rails isolation level set to `:fiber`** (critical for fiber mode)
 - Async-compatible gems for full benefit
 

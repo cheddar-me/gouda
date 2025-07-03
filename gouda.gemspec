@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "railties", rails_min
   spec.add_dependency "activejob", rails_min
   spec.add_dependency "fugit", "~> 1.10"
-  spec.add_dependency "async", "~> 2.0"
+  spec.add_dependency "async", "~> 2.25"
 
   spec.add_development_dependency "standard"
   spec.add_development_dependency "pg"

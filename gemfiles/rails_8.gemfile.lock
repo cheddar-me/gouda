@@ -5,7 +5,7 @@ PATH
       activejob (>= 7.2.0)
       activerecord (>= 7.2.0)
       activesupport (>= 7.2.0)
-      async (~> 2.0)
+      async (~> 2.25)
       fugit (~> 1.10)
       railties (>= 7.2.0)
 
@@ -278,7 +278,7 @@ PLATFORMS
 
 DEPENDENCIES
   appraisal
-  async (~> 2.0)
+  async (~> 2.25)
   debug
   gouda!
   minitest (~> 5.0)
