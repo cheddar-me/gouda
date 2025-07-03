@@ -232,8 +232,6 @@ module Gouda
       end
     end
 
-    private
-
     def self.logger
       Gouda.logger
     end

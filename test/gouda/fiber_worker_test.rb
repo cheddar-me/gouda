@@ -221,7 +221,7 @@ class FiberWorkerTest < ActiveSupport::TestCase
     original_logger = Gouda.instance_variable_get(:@fallback_gouda_logger)
 
     # Create a logger that captures messages in our array
-    test_logger = ActiveSupport::TaggedLogging.new(Logger.new("/dev/null"))
+    test_logger = ActiveSupport::TaggedLogging.new(Logger.new("File::NULL"))
     test_logger.level = Logger::WARN
 
     # Override the warn method to capture messages
@@ -278,7 +278,7 @@ class FiberWorkerTest < ActiveSupport::TestCase
     original_logger = Gouda.instance_variable_get(:@fallback_gouda_logger)
 
     # Create a logger that captures messages in our array
-    test_logger = ActiveSupport::TaggedLogging.new(Logger.new("/dev/null"))
+    test_logger = ActiveSupport::TaggedLogging.new(Logger.new("File::NULL"))
     test_logger.level = Logger::INFO
 
     # Override the info method to capture messages
