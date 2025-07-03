@@ -45,26 +45,26 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
       serialized_params: {},
       executing_on: "hostname-1234-uuid-thread-abc123"
     )
-    
+
     assert thread_workload.executed_on_thread?
     refute thread_workload.executed_on_fiber?
     assert_equal :thread, thread_workload.execution_context
-    
-    # Test fiber execution detection  
+
+    # Test fiber execution detection
     fiber_workload = Gouda::Workload.create!(
       id: SecureRandom.uuid,
       active_job_id: SecureRandom.uuid,
-      active_job_class_name: "TestJob", 
+      active_job_class_name: "TestJob",
       queue_name: "default",
       scheduled_at: Time.now.utc,
       serialized_params: {},
       executing_on: "hostname-1234-uuid-fiber-def456"
     )
-    
+
     assert fiber_workload.executed_on_fiber?
     refute fiber_workload.executed_on_thread?
     assert_equal :fiber, fiber_workload.execution_context
-    
+
     # Test unknown execution context
     unknown_workload = Gouda::Workload.create!(
       id: SecureRandom.uuid,
@@ -75,11 +75,11 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
       serialized_params: {},
       executing_on: "legacy-format-without-context"
     )
-    
+
     refute unknown_workload.executed_on_thread?
     refute unknown_workload.executed_on_fiber?
     assert_equal :unknown, unknown_workload.execution_context
-    
+
     # Test nil executing_on
     nil_workload = Gouda::Workload.create!(
       id: SecureRandom.uuid,
@@ -89,7 +89,7 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
       scheduled_at: Time.now.utc,
       serialized_params: {}
     )
-    
+
     refute nil_workload.executed_on_thread?
     refute nil_workload.executed_on_fiber?
     assert_equal :unknown, nil_workload.execution_context

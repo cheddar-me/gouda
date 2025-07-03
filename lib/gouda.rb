@@ -67,7 +67,7 @@ module Gouda
       # Check database pool configuration (non-destructive)
       FiberDatabaseSupport.check_pool_configuration
       FiberDatabaseSupport.check_fiber_isolation_level
-      
+
       # Use fiber-based worker
       FiberWorker.worker_loop(
         n_fibers: Gouda.config.fiber_worker_count,
@@ -176,10 +176,10 @@ module Gouda
   module FiberDatabaseSupport
     def self.check_pool_configuration
       return unless defined?(ActiveRecord::Base)
-      
+
       current_pool_size = ActiveRecord::Base.connection_pool.size
       desired_pool_size = Gouda.config.async_db_pool_size
-      
+
       if current_pool_size < desired_pool_size
         logger.warn("Database pool size (#{current_pool_size}) may be too small for fiber concurrency")
         logger.warn("Consider increasing pool size to #{desired_pool_size} in database.yml")
@@ -196,18 +196,18 @@ module Gouda
 
       begin
         current_isolation = ActiveSupport.isolation_level
-        
+
         # Check if we're using PostgreSQL
         using_postgresql = false
         begin
-          if defined?(ActiveRecord::Base) && ActiveRecord::Base.connection.adapter_name == 'PostgreSQL'
+          if defined?(ActiveRecord::Base) && ActiveRecord::Base.connection.adapter_name == "PostgreSQL"
             using_postgresql = true
           end
-        rescue => e
+        rescue
           # If we can't determine the adapter, assume we might be using PostgreSQL to be safe
           using_postgresql = true
         end
-        
+
         if current_isolation != :fiber && using_postgresql
           logger.warn("=" * 80)
           logger.warn("FIBER SCHEDULER CONFIGURATION WARNING")
@@ -231,9 +231,9 @@ module Gouda
         logger.warn("Could not check Rails isolation level: #{e.message}")
       end
     end
-    
+
     private
-    
+
     def self.logger
       Gouda.logger
     end
