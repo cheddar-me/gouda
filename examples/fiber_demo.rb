@@ -26,7 +26,7 @@ end
 # Configure Gouda for fiber-based execution
 Gouda.configure do |config|
   config.use_fiber_scheduler = true
-  config.fiber_worker_count = 5
+  config.fibers_per_thread = 5
   config.async_db_pool_size = 10
   config.polling_sleep_interval_seconds = 0.1
   config.preserve_job_records = true
@@ -74,7 +74,7 @@ puts "🎯 Gouda Fiber Worker Demo"
 puts "========================="
 puts "Configuration:"
 puts "  - Fiber scheduler: #{Gouda.config.use_fiber_scheduler}"
-puts "  - Fiber workers: #{Gouda.config.fiber_worker_count}"
+puts "  - Fiber workers: #{Gouda.config.fibers_per_thread}"
 puts "  - DB pool size: #{Gouda.config.async_db_pool_size}"
 puts ""
 

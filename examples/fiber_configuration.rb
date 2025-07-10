@@ -17,10 +17,10 @@ Gouda.configure do |config|
 
   # Number of concurrent worker fibers
   # Can be higher than CPU cores since fibers are lightweight for IO-bound work
-  config.fiber_worker_count = 10
+  config.fibers_per_thread = 10
 
   # Database connection pool size
-  # Should be >= fiber_worker_count + buffer for other Rails processes
+  # Should be >= fibers_per_thread + buffer for other Rails processes
   config.async_db_pool_size = 25
 
   # Other standard Gouda configuration options work the same
