@@ -140,137 +140,139 @@ module Gouda
       worker_threads&.map(&:join)
     end
 
-    private
+    class << self
+      private
 
-    def self.log_worker_configuration(n_threads, use_fibers, fibers_per_thread)
-      if use_fibers
-        Gouda.logger.info("Using hybrid scheduler (threads + fibers)")
-        Gouda.logger.info("Worker threads: #{n_threads}")
-        Gouda.logger.info("Fibers per thread: #{fibers_per_thread}")
-        Gouda.logger.info("Total concurrency: #{n_threads * fibers_per_thread}")
-      else
-        Gouda.logger.info("Using thread-based scheduler")
-        Gouda.logger.info("Worker threads: #{n_threads}")
-      end
-    end
-
-    def self.setup_fiber_environment
-      # Check Rails isolation level configuration
-      Gouda::FiberDatabaseSupport.check_fiber_isolation_level
-    end
-
-    def self.generate_worker_id
-      [Socket.gethostname, Process.pid, SecureRandom.uuid].join("-")
-    end
-
-    def self.create_hybrid_worker_threads(n_threads, fibers_per_thread, worker_id, queue_constraint, executing_workload_ids, check_shutdown)
-      n_threads.times.map do |thread_index|
-        Thread.new do
-          # Load the Async gem here to avoid dependency issues when not using fibers
-          require "async"
-          require "async/scheduler"
-          
-          # Each thread runs its own fiber scheduler
-          Async do |task|
-            # Create multiple fibers within this thread
-            fiber_tasks = fibers_per_thread.times.map do |fiber_index|
-              task.async do |worker_task|
-                worker_id_and_fiber_id = generate_execution_id(worker_id, thread: true, fiber: true)
-                
-                run_worker_loop(worker_id_and_fiber_id, queue_constraint, executing_workload_ids, check_shutdown, worker_task)
-              end
-            end
-
-            # Wait for all fibers in this thread to complete
-            fiber_tasks.each(&:wait)
-          end
-        end
-      end
-    end
-
-    def self.create_threaded_worker_threads(n_threads, worker_id, queue_constraint, executing_workload_ids, check_shutdown)
-      n_threads.times.map do
-        Thread.new do
-          worker_id_and_thread_id = generate_execution_id(worker_id, thread: true, fiber: false)
-          run_worker_loop(worker_id_and_thread_id, queue_constraint, executing_workload_ids, check_shutdown)
-        end
-      end
-    end
-
-    def self.generate_execution_id(worker_id, thread: false, fiber: false)
-      parts = [worker_id]
-      parts << "thread-#{Thread.current.object_id.to_s(16)}" if thread
-      parts << "fiber-#{Fiber.current.object_id.to_s(16)}" if fiber
-      parts.join("-")
-    end
-
-    def self.run_worker_loop(execution_id, queue_constraint, executing_workload_ids, check_shutdown, fiber_task = nil)
-      loop do
-        break if check_shutdown.call
-
-        begin
-          did_process = Gouda.config.app_executor.wrap do
-            Gouda::Workload.checkout_and_perform_one(
-              executing_on: execution_id,
-              queue_constraint: queue_constraint,
-              in_progress: executing_workload_ids
-            )
-          end
-
-          # If no job was retrieved, sleep with appropriate scheduler
-          unless did_process
-            jitter_sleep_interval = POLL_INTERVAL_DURATION_SECONDS + (POLL_INTERVAL_DURATION_SECONDS * 0.25)
-            sleep_with_interruptions(jitter_sleep_interval, check_shutdown, fiber_task)
-          end
-        rescue => e
-          Gouda.logger.warn "Uncaught exception during perform (#{e.class} - #{e})"
-        end
-      end
-    end
-
-    def self.run_housekeeping_loop(worker_id, executing_workload_ids, check_shutdown)
-      loop do
-        break if check_shutdown.call
-
-        begin
-          Gouda.config.app_executor.wrap do
-            # Mark known executing jobs as such. If a worker process is killed or the machine it is running on dies,
-            # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
-            # even though the worker it was running on has failed for whatever reason.
-            # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
-            Gouda.suppressing_sql_logs do # these updates will also be very frequent with long-running jobs
-              Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
-            end
-
-            # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
-            Gouda::Workload.reap_zombie_workloads
-          end
-        rescue => e
-          Gouda.instrument(:exception, {exception: e})
-          Gouda.logger.warn "Uncaught exception during housekeeping (#{e.class} - #{e})"
-        end
-
-        # Jitter the sleep so that the workers booted at the same time do not all dogpile
-        randomized_sleep_duration_s = POLL_INTERVAL_DURATION_SECONDS + (POLL_INTERVAL_DURATION_SECONDS.to_f * rand)
-        sleep_with_interruptions(randomized_sleep_duration_s, check_shutdown)
-      end
-    end
-
-    # Unified sleep method that works with both threads and fibers
-    def self.sleep_with_interruptions(n_seconds, must_abort_proc, fiber_task = nil)
-      start_time_seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      check_interval_seconds = Gouda.config.polling_sleep_interval_seconds
-
-      loop do
-        return if must_abort_proc.call
-        return if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time_seconds >= n_seconds
-
-        if fiber_task
-          # Use fiber-based sleep that yields control to the scheduler
-          fiber_task.sleep(check_interval_seconds)
+      def log_worker_configuration(n_threads, use_fibers, fibers_per_thread)
+        if use_fibers
+          Gouda.logger.info("Using hybrid scheduler (threads + fibers)")
+          Gouda.logger.info("Worker threads: #{n_threads}")
+          Gouda.logger.info("Fibers per thread: #{fibers_per_thread}")
+          Gouda.logger.info("Total concurrency: #{n_threads * fibers_per_thread}")
         else
-          # Use regular thread sleep
-          sleep(check_interval_seconds)
+          Gouda.logger.info("Using thread-based scheduler")
+          Gouda.logger.info("Worker threads: #{n_threads}")
+        end
+      end
+
+      def setup_fiber_environment
+        # Check Rails isolation level configuration
+        Gouda::FiberDatabaseSupport.check_fiber_isolation_level
+      end
+
+      def generate_worker_id
+        [Socket.gethostname, Process.pid, SecureRandom.uuid].join("-")
+      end
+
+      def create_hybrid_worker_threads(n_threads, fibers_per_thread, worker_id, queue_constraint, executing_workload_ids, check_shutdown)
+        n_threads.times.map do |thread_index|
+          Thread.new do
+            # Load the Async gem here to avoid dependency issues when not using fibers
+            require "async"
+            require "async/scheduler"
+
+            # Each thread runs its own fiber scheduler
+            Async do |task|
+              # Create multiple fibers within this thread
+              fiber_tasks = fibers_per_thread.times.map do |fiber_index|
+                task.async do |worker_task|
+                  worker_id_and_fiber_id = generate_execution_id(worker_id, thread: true, fiber: true)
+
+                  run_worker_loop(worker_id_and_fiber_id, queue_constraint, executing_workload_ids, check_shutdown, worker_task)
+                end
+              end
+
+              # Wait for all fibers in this thread to complete
+              fiber_tasks.each(&:wait)
+            end
+          end
+        end
+      end
+
+      def create_threaded_worker_threads(n_threads, worker_id, queue_constraint, executing_workload_ids, check_shutdown)
+        n_threads.times.map do
+          Thread.new do
+            worker_id_and_thread_id = generate_execution_id(worker_id, thread: true, fiber: false)
+            run_worker_loop(worker_id_and_thread_id, queue_constraint, executing_workload_ids, check_shutdown)
+          end
+        end
+      end
+
+      def generate_execution_id(worker_id, thread: false, fiber: false)
+        parts = [worker_id]
+        parts << "thread-#{Thread.current.object_id.to_s(16)}" if thread
+        parts << "fiber-#{Fiber.current.object_id.to_s(16)}" if fiber
+        parts.join("-")
+      end
+
+      def run_worker_loop(execution_id, queue_constraint, executing_workload_ids, check_shutdown, fiber_task = nil)
+        loop do
+          break if check_shutdown.call
+
+          begin
+            did_process = Gouda.config.app_executor.wrap do
+              Gouda::Workload.checkout_and_perform_one(
+                executing_on: execution_id,
+                queue_constraint: queue_constraint,
+                in_progress: executing_workload_ids
+              )
+            end
+
+            # If no job was retrieved, sleep with appropriate scheduler
+            unless did_process
+              jitter_sleep_interval = POLL_INTERVAL_DURATION_SECONDS + (POLL_INTERVAL_DURATION_SECONDS * 0.25)
+              sleep_with_interruptions(jitter_sleep_interval, check_shutdown, fiber_task)
+            end
+          rescue => e
+            Gouda.logger.warn "Uncaught exception during perform (#{e.class} - #{e})"
+          end
+        end
+      end
+
+      def run_housekeeping_loop(worker_id, executing_workload_ids, check_shutdown)
+        loop do
+          break if check_shutdown.call
+
+          begin
+            Gouda.config.app_executor.wrap do
+              # Mark known executing jobs as such. If a worker process is killed or the machine it is running on dies,
+              # a stale timestamp can indicate to us that the job was orphaned and is marked as "executing"
+              # even though the worker it was running on has failed for whatever reason.
+              # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
+              Gouda.suppressing_sql_logs do # these updates will also be very frequent with long-running jobs
+                Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
+              end
+
+              # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
+              Gouda::Workload.reap_zombie_workloads
+            end
+          rescue => e
+            Gouda.instrument(:exception, {exception: e})
+            Gouda.logger.warn "Uncaught exception during housekeeping (#{e.class} - #{e})"
+          end
+
+          # Jitter the sleep so that the workers booted at the same time do not all dogpile
+          randomized_sleep_duration_s = POLL_INTERVAL_DURATION_SECONDS + (POLL_INTERVAL_DURATION_SECONDS.to_f * rand)
+          sleep_with_interruptions(randomized_sleep_duration_s, check_shutdown)
+        end
+      end
+
+      # Unified sleep method that works with both threads and fibers
+      def sleep_with_interruptions(n_seconds, must_abort_proc, fiber_task = nil)
+        start_time_seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        check_interval_seconds = Gouda.config.polling_sleep_interval_seconds
+
+        loop do
+          return if must_abort_proc.call
+          return if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time_seconds >= n_seconds
+
+          if fiber_task
+            # Use fiber-based sleep that yields control to the scheduler
+            fiber_task.sleep(check_interval_seconds)
+          else
+            # Use regular thread sleep
+            sleep(check_interval_seconds)
+          end
         end
       end
     end
@@ -279,9 +281,9 @@ module Gouda
   # Module-level convenience method that delegates to Worker.worker_loop
   def self.worker_loop(n_threads:, check_shutdown: TrapShutdownCheck.new, queue_constraint: Gouda::AnyQueue, use_fibers: false, fibers_per_thread: 1)
     Worker.worker_loop(
-      n_threads: n_threads, 
-      check_shutdown: check_shutdown, 
-      queue_constraint: queue_constraint, 
+      n_threads: n_threads,
+      check_shutdown: check_shutdown,
+      queue_constraint: queue_constraint,
       use_fibers: use_fibers,
       fibers_per_thread: fibers_per_thread
     )
