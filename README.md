@@ -83,7 +83,7 @@ You can programmatically check the execution context:
 ```ruby
 workload = Gouda::Workload.last
 workload.executed_on_thread?  # => true/false
-workload.executed_on_fiber?   # => true/false  
+workload.uses_async_execution?  # => true/false  
 workload.execution_context    # => :thread, :fiber, or :unknown
 ```
 

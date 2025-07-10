@@ -47,7 +47,7 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
     )
 
     assert thread_workload.executed_on_thread?
-    refute thread_workload.executed_on_fiber?
+    refute thread_workload.uses_async_execution?
     assert_equal :thread, thread_workload.execution_context
 
     # Test fiber execution detection
@@ -61,7 +61,7 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
       executing_on: "hostname-1234-uuid-fiber-def456"
     )
 
-    assert fiber_workload.executed_on_fiber?
+    assert fiber_workload.uses_async_execution?
     refute fiber_workload.executed_on_thread?
     assert_equal :fiber, fiber_workload.execution_context
 
@@ -77,7 +77,7 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
     )
 
     refute unknown_workload.executed_on_thread?
-    refute unknown_workload.executed_on_fiber?
+    refute unknown_workload.uses_async_execution?
     assert_equal :unknown, unknown_workload.execution_context
 
     # Test nil executing_on
@@ -91,7 +91,7 @@ class GoudaWorkloadTest < ActiveSupport::TestCase
     )
 
     refute nil_workload.executed_on_thread?
-    refute nil_workload.executed_on_fiber?
+    refute nil_workload.uses_async_execution?
     assert_equal :unknown, nil_workload.execution_context
   end
 
