@@ -41,27 +41,27 @@ class FiberWorkerTest < ActiveSupport::TestCase
 
   test "fiber worker can be configured" do
     original_use_fiber_scheduler = Gouda.config.use_fiber_scheduler
-    original_fiber_worker_count = Gouda.config.fiber_worker_count
     original_async_db_pool_size = Gouda.config.async_db_pool_size
+    original_fibers_per_thread = Gouda.config.fibers_per_thread
 
     Gouda.configure do |config|
       config.use_fiber_scheduler = true
-      config.fiber_worker_count = 5
+      config.fibers_per_thread = 5
       config.async_db_pool_size = 10
     end
 
     assert_equal true, Gouda.config.use_fiber_scheduler
-    assert_equal 5, Gouda.config.fiber_worker_count
+    assert_equal 5, Gouda.config.fibers_per_thread
     assert_equal 10, Gouda.config.async_db_pool_size
   ensure
     # Reset configuration
     Gouda.config.use_fiber_scheduler = original_use_fiber_scheduler
-    Gouda.config.fiber_worker_count = original_fiber_worker_count
+    Gouda.config.fibers_per_thread = original_fibers_per_thread
     Gouda.config.async_db_pool_size = original_async_db_pool_size
   end
 
   test "FiberSafeSet works correctly" do
-    set = Gouda::FiberWorker::FiberSafeSet.new
+    set = Gouda::FiberSafeSet.new
 
     assert_equal [], set.to_a
 
@@ -86,9 +86,11 @@ class FiberWorkerTest < ActiveSupport::TestCase
     end
     assert_equal 12, Gouda::Workload.where(state: "enqueued").count
 
-    # Use fiber worker with empty queue shutdown check
-    Gouda::FiberWorker.worker_loop(
-      n_fibers: 2,
+    # Use hybrid worker (threads + fibers) with empty queue shutdown check
+    Gouda::Worker.worker_loop(
+      n_threads: 1,
+      use_fibers: true,
+      fibers_per_thread: 2,
       check_shutdown: Gouda::EmptyQueueShutdownCheck.new
     )
 
@@ -115,8 +117,10 @@ class FiberWorkerTest < ActiveSupport::TestCase
     end
     assert_equal 12, Gouda::Workload.where(state: "enqueued").count
 
-    Gouda::FiberWorker.worker_loop(
-      n_fibers: 1,
+    Gouda::Worker.worker_loop(
+      n_threads: 1,
+      use_fibers: true,
+      fibers_per_thread: 1,
       queue_constraint: only_from_fiber_queue,
       check_shutdown: fiber_queue_has_no_jobs
     )
@@ -134,8 +138,10 @@ class FiberWorkerTest < ActiveSupport::TestCase
     FiberTestJob.perform_later("I")
 
     # Use empty queue shutdown instead of timer to ensure job completes
-    Gouda::FiberWorker.worker_loop(
-      n_fibers: 1,
+    Gouda::Worker.worker_loop(
+      n_threads: 1,
+      use_fibers: true,
+      fibers_per_thread: 1,
       check_shutdown: Gouda::EmptyQueueShutdownCheck.new
     )
 
@@ -159,8 +165,10 @@ class FiberWorkerTest < ActiveSupport::TestCase
 
     assert_equal 8, Gouda::Workload.where(state: "enqueued").count
 
-    Gouda::FiberWorker.worker_loop(
-      n_fibers: 3,  # Use 3 fibers to handle 8 jobs
+    Gouda::Worker.worker_loop(
+      n_threads: 1,
+      use_fibers: true,
+      fibers_per_thread: 3,  # Use 3 fibers to handle 8 jobs
       check_shutdown: Gouda::EmptyQueueShutdownCheck.new
     )
 

@@ -76,7 +76,7 @@ A `Workload` is executing on a particular `executing_on` entity - usually a work
 
 The `executing_on` field now clearly indicates the execution context:
 - Thread-based execution: `hostname-pid-uuid-thread-abc123` 
-- Fiber-based execution: `hostname-pid-uuid-fiber-def456`
+- Hybrid execution (threads + fibers): `hostname-pid-uuid-thread-abc123-fiber-def456`
 
 You can programmatically check the execution context:
 
@@ -116,25 +116,39 @@ User.transaction do
 end
 ```
 
-## Fiber-based Non-blocking IO
+## Hybrid Execution: Threads + Fibers
 
-Gouda supports both traditional thread-based and modern fiber-based execution modes. The fiber-based mode provides non-blocking IO capabilities for better performance with IO-bound jobs.
+Gouda supports two execution modes: traditional thread-based execution and hybrid execution that combines multiple threads with multiple fibers per thread. The hybrid mode provides non-blocking IO capabilities while still utilizing multiple CPU cores.
+
+### Execution Modes
+
+**Thread-based execution (default):**
+- Multiple worker threads
+- One job per thread at a time
+- Simple and reliable
+- Good for CPU-bound work
+
+**Hybrid execution (threads + fibers):**
+- Multiple worker threads, each containing multiple fibers
+- Much higher concurrency (threads × fibers per thread)
+- Non-blocking IO within each thread
+- Best of both worlds: CPU parallelism + IO concurrency
 
 ### Requirements
 
 - Ruby 3.1+ with Fiber.scheduler support
 - `async` gem dependency (~> 2.25, automatically included)
-- **Rails isolation level set to `:fiber`** (critical for fiber mode)
+- **Rails isolation level set to `:fiber`** (critical for hybrid mode)
 - Async-compatible gems for full benefit
 
-### Critical Configuration for Fiber Mode
+### Critical Configuration for Hybrid Mode
 
-**⚠️ IMPORTANT**: When using fiber-based execution **with PostgreSQL**, you **must** configure Rails to use fiber-based isolation:
+**⚠️ IMPORTANT**: When using hybrid execution **with PostgreSQL**, you **must** configure Rails to use fiber-based isolation:
 
 ```ruby
 # config/application.rb
 class Application < Rails::Application
-  # This is REQUIRED for Gouda fiber mode with PostgreSQL
+  # This is REQUIRED for Gouda hybrid mode with PostgreSQL
   config.active_support.isolation_level = :fiber
 end
 ```
@@ -144,62 +158,82 @@ end
 - Ensures ActiveRecord connection pools work correctly with fibers and PostgreSQL connections
 - Required for proper fiber-based concurrency with PostgreSQL's connection handling
 
-**Note**: This configuration is specifically required when using PostgreSQL. Other database adapters may not have the same requirement, but setting it to `:fiber` is generally safe and recommended when using Gouda's fiber mode.
+**Note**: This configuration is specifically required when using PostgreSQL. Other database adapters may not have the same requirement, but setting it to `:fiber` is generally safe and recommended when using Gouda's hybrid mode.
 
 Gouda will automatically detect if this setting is missing when using PostgreSQL and warn you during startup.
 
 ### Configuration
 
-To enable fiber-based execution:
+To enable hybrid execution (threads + fibers):
 
 ```ruby
 Gouda.configure do |config|
-  # Enable fiber-based scheduler
+  # Enable hybrid scheduler (threads + fibers)
   config.use_fiber_scheduler = true
   
-  # Number of worker fibers (can be higher than CPU cores)
-  config.fiber_worker_count = 10
+  # Number of worker threads (should match your CPU cores)
+  config.worker_thread_count = 4
+  
+  # Number of fibers per thread (can be much higher)
+  config.fibers_per_thread = 10  # This means 10 fibers PER thread
+  
+  # Total concurrency = worker_thread_count × fibers_per_thread
+  # In this example: 4 threads × 10 fibers = 40 concurrent jobs
   
   # Database connection pool size for fiber concurrency
-  config.async_db_pool_size = 25
+  config.async_db_pool_size = 50  # Should be >= total concurrency + buffer
+end
+```
+
+**Traditional thread-based execution (default):**
+
+```ruby
+Gouda.configure do |config|
+  # Thread-based execution (default)
+  config.use_fiber_scheduler = false
+  
+  # Number of worker threads
+  config.worker_thread_count = 4  # Total concurrency = 4
 end
 ```
 
 ### Benefits
 
 - **Non-blocking IO**: Database queries, HTTP requests, and file operations don't block other jobs
-- **Higher concurrency**: Can handle more concurrent jobs with less memory overhead than threads
+- **CPU parallelism**: Multiple threads utilize multiple CPU cores
+- **Higher concurrency**: Can handle many more concurrent jobs with less memory overhead than pure threading
 - **Better resource utilization**: Cooperative scheduling reduces context switching overhead
 - **Backward compatibility**: Thread-based mode remains the default and continues to work
 
 ### Database Pool Configuration
 
-For optimal fiber-based performance, ensure your database connection pool is sized appropriately:
+For optimal hybrid execution performance, ensure your database connection pool is sized appropriately:
 
 ```yaml
 # config/database.yml
 development:
-  pool: 25  # Should be >= fiber_worker_count + some buffer
+  pool: 50  # Should be >= (worker_thread_count × fibers_per_thread) + buffer
   checkout_timeout: 10
 ```
 
-The fiber worker will check your pool size and warn if it might be too small. A pool that's too small won't cause crashes, but may reduce concurrency as fibers wait for database connections.
+The worker will check your pool size and warn if it might be too small. A pool that's too small won't cause crashes, but may reduce concurrency as fibers wait for database connections.
 
-### When to use fibers vs threads
+### When to use hybrid vs thread execution
 
-**Use fiber-based execution for:**
+**Use hybrid execution (threads + fibers) for:**
 - IO-bound jobs (HTTP requests, database queries, file processing)
 - High-concurrency scenarios
 - Jobs that spend time waiting for external resources
+- Mixed workloads with both CPU and IO requirements
 
 **Use thread-based execution for:**
 - CPU-intensive jobs
 - Jobs that use gems without async support
 - Simpler deployment scenarios
+- When you want predictable, simple execution
 
 You can even run both modes simultaneously with different queue constraints to optimize for different job types.
 
 ## Web UI
 
 At the moment the Gouda UI is proprietary, so this gem only provides a "headless" implementation. We expect this to change in the future.
-

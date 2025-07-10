@@ -10,7 +10,6 @@ require_relative "gouda/scheduler"
 require_relative "gouda/railtie" if defined?(Rails::Railtie)
 require_relative "gouda/workload"
 require_relative "gouda/worker"
-require_relative "gouda/fiber_worker"
 require_relative "gouda/job_fuse"
 require_relative "gouda/queue_constraints"
 require_relative "gouda/active_job_extensions/interrupts"
@@ -35,7 +34,7 @@ module Gouda
     config_accessor(:log_level, default: nil)
 
     # Fiber-specific configuration options
-    config_accessor(:fiber_worker_count, default: 1)
+    config_accessor(:fibers_per_thread, default: 1)  # Number of fibers per worker thread
     config_accessor(:use_fiber_scheduler, default: false)
     config_accessor(:async_db_pool_size, default: 25)
   end
@@ -50,7 +49,7 @@ module Gouda
     start_with_scheduler_type
   end
 
-  # Enhanced start method that chooses between thread and fiber execution
+  # Enhanced start method that chooses between thread and thread+fiber execution
   def self.start_with_scheduler_type
     queue_constraint = if ENV["GOUDA_QUEUES"]
       Gouda.parse_queue_constraint(ENV["GOUDA_QUEUES"])
@@ -60,29 +59,17 @@ module Gouda
 
     logger.info("Gouda version: #{Gouda::VERSION}")
 
-    if Gouda.config.use_fiber_scheduler
-      logger.info("Using fiber-based scheduler")
-      logger.info("Worker fibers: #{Gouda.config.fiber_worker_count}")
+    # Determine execution parameters based on configuration
+    use_fibers = Gouda.config.use_fiber_scheduler
+    fibers_per_thread = use_fibers ? Gouda.config.fibers_per_thread : 1
 
-      # Check database pool configuration (non-destructive)
-      FiberDatabaseSupport.check_pool_configuration
-      FiberDatabaseSupport.check_fiber_isolation_level
-
-      # Use fiber-based worker
-      FiberWorker.worker_loop(
-        n_fibers: Gouda.config.fiber_worker_count,
-        queue_constraint: queue_constraint
-      )
-    else
-      logger.info("Using thread-based scheduler")
-      logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
-
-      # Use original thread-based worker
-      worker_loop(
-        n_threads: Gouda.config.worker_thread_count,
-        queue_constraint: queue_constraint
-      )
-    end
+    # Single worker loop call that handles both execution modes
+    Worker.worker_loop(
+      n_threads: Gouda.config.worker_thread_count,
+      queue_constraint: queue_constraint,
+      use_fibers: use_fibers,
+      fibers_per_thread: fibers_per_thread
+    )
   end
 
   def self.config
