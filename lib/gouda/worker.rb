@@ -31,28 +31,6 @@ module Gouda
     end
   end
 
-  # Fiber-safe set for tracking executing workload IDs in fiber mode
-  class FiberSafeSet
-    def initialize
-      @set = Set.new
-      @mutex = Mutex.new
-    end
-
-    def add(value)
-      @mutex.synchronize { @set.add(value) }
-      value
-    end
-
-    def delete(value)
-      @mutex.synchronize { @set.delete(value) }
-      value
-    end
-
-    def to_a
-      @mutex.synchronize { @set.to_a }
-    end
-  end
-
   # Returns `true` once a given timer has elapsed.
   # This is useful to terminate a worker after a certain amount of time
   class TimerShutdownCheck
@@ -147,7 +125,7 @@ module Gouda
       setup_fiber_environment if use_fibers
 
       worker_id = generate_worker_id
-      executing_workload_ids = use_fibers ? FiberSafeSet.new : ThreadSafeSet.new
+      executing_workload_ids = ThreadSafeSet.new
 
       raise ArgumentError, "You need at least 1 worker thread, but you requested #{n_threads}" if n_threads < 1
 

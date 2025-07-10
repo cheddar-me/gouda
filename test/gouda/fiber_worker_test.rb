@@ -60,8 +60,8 @@ class FiberWorkerTest < ActiveSupport::TestCase
     Gouda.config.async_db_pool_size = original_async_db_pool_size
   end
 
-  test "FiberSafeSet works correctly" do
-    set = Gouda::FiberSafeSet.new
+  test "ThreadSafeSet works correctly" do
+    set = Gouda::ThreadSafeSet.new
 
     assert_equal [], set.to_a
 
