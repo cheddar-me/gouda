@@ -20,8 +20,8 @@ class AsyncHttpJob < ApplicationJob
   private
 
   def fetch_url_async(url)
-    # When running under fiber scheduler, this will be non-blocking
-    # When running under thread scheduler, this will block the thread
+    # When running in Gouda's hybrid mode: concurrent with other async operations in same reactor
+    # When running in thread-only mode: blocks the thread (creates own reactor)
     Async do |task|
       internet = Async::HTTP::Internet.new
       response = internet.get(url)
