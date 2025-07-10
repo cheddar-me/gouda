@@ -179,9 +179,6 @@ Gouda.configure do |config|
   
   # Total concurrency = worker_thread_count × fibers_per_thread
   # In this example: 4 threads × 10 fibers = 40 concurrent jobs
-  
-  # Database connection pool size for fiber concurrency
-  config.async_db_pool_size = 50  # Should be >= total concurrency + buffer
 end
 ```
 
@@ -204,19 +201,6 @@ end
 - **Higher concurrency**: Can handle many more concurrent jobs with less memory overhead than pure threading
 - **Better resource utilization**: Cooperative scheduling reduces context switching overhead
 - **Backward compatibility**: Thread-based mode remains the default and continues to work
-
-### Database Pool Configuration
-
-For optimal hybrid execution performance, ensure your database connection pool is sized appropriately:
-
-```yaml
-# config/database.yml
-development:
-  pool: 50  # Should be >= (worker_thread_count × fibers_per_thread) + buffer
-  checkout_timeout: 10
-```
-
-The worker will check your pool size and warn if it might be too small. A pool that's too small won't cause crashes, but may reduce concurrency as fibers wait for database connections.
 
 ### When to use hybrid vs thread execution
 

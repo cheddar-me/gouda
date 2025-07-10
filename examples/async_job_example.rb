@@ -96,7 +96,6 @@ class FiberWorkerInitializer
         Gouda.configure do |config|
           config.use_fiber_scheduler = true
           config.fibers_per_thread = 20
-          config.async_db_pool_size = 25
         end
 
         Gouda.start

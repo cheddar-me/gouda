@@ -151,23 +151,19 @@ class GoudaWorkerTest < ActiveSupport::TestCase
 
   test "hybrid worker can be configured" do
     original_use_fiber_scheduler = Gouda.config.use_fiber_scheduler
-    original_async_db_pool_size = Gouda.config.async_db_pool_size
     original_fibers_per_thread = Gouda.config.fibers_per_thread
 
     Gouda.configure do |config|
       config.use_fiber_scheduler = true
       config.fibers_per_thread = 5
-      config.async_db_pool_size = 10
     end
 
     assert_equal true, Gouda.config.use_fiber_scheduler
     assert_equal 5, Gouda.config.fibers_per_thread
-    assert_equal 10, Gouda.config.async_db_pool_size
   ensure
     # Reset configuration
     Gouda.config.use_fiber_scheduler = original_use_fiber_scheduler
     Gouda.config.fibers_per_thread = original_fibers_per_thread
-    Gouda.config.async_db_pool_size = original_async_db_pool_size
   end
 
   test "ThreadSafeSet works correctly" do

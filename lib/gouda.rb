@@ -36,7 +36,6 @@ module Gouda
     # Fiber-specific configuration options
     config_accessor(:fibers_per_thread, default: 1)  # Number of fibers per worker thread
     config_accessor(:use_fiber_scheduler, default: false)
-    config_accessor(:async_db_pool_size, default: 25)
   end
 
   class InterruptError < StandardError
@@ -159,25 +158,13 @@ module Gouda
     end
   end
 
+  def self.setup_fiber_environment
+    # Check Rails isolation level configuration (non-destructive)
+    Gouda::FiberDatabaseSupport.check_fiber_isolation_level
+  end
+
   # Database configuration helpers for fiber mode
   module FiberDatabaseSupport
-    def self.check_pool_configuration
-      return unless defined?(ActiveRecord::Base)
-
-      current_pool_size = ActiveRecord::Base.connection_pool.size
-      desired_pool_size = Gouda.config.async_db_pool_size
-
-      if current_pool_size < desired_pool_size
-        logger.warn("Database pool size (#{current_pool_size}) may be too small for fiber concurrency")
-        logger.warn("Consider increasing pool size to #{desired_pool_size} in database.yml")
-        logger.warn("Current pool size should work but may cause fiber blocking on DB connections")
-      else
-        logger.info("Database pool size (#{current_pool_size}) is sufficient for fiber concurrency")
-      end
-    rescue => e
-      logger.warn("Could not check database pool configuration: #{e.message}")
-    end
-
     def self.check_fiber_isolation_level
       return unless defined?(Rails) && Rails.respond_to?(:application) && Rails.application
 

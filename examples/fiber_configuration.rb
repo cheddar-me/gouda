@@ -19,30 +19,17 @@ Gouda.configure do |config|
   # Can be higher than CPU cores since fibers are lightweight for IO-bound work
   config.fibers_per_thread = 10
 
-  # Database connection pool size
-  # Should be >= fibers_per_thread + buffer for other Rails processes
-  config.async_db_pool_size = 25
-
   # Other standard Gouda configuration options work the same
   config.preserve_job_records = true
   config.cleanup_preserved_jobs_before = 3.hours
 end
-
-# Database configuration should also be updated (config/database.yml)
-#
-# development:
-#   adapter: postgresql
-#   database: myapp_development
-#   pool: 25              # Should match or exceed async_db_pool_size
-#   checkout_timeout: 10  # Timeout for getting connections from pool
 
 # Example of starting the fiber-based worker
 # Gouda.start
 
 # The worker will automatically:
 # 1. Check that Rails isolation level is set to :fiber (warn if not)
-# 2. Check that database pool size is sufficient (warn if too small)
-# 3. Use fiber-based concurrency for non-blocking IO
+# 2. Use fiber-based concurrency for non-blocking IO
 
 # Benefits of fiber-based approach:
 # 1. Non-blocking IO operations (database queries, HTTP requests, etc.)

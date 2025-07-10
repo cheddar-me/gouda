@@ -155,8 +155,7 @@ module Gouda
     end
 
     def self.setup_fiber_environment
-      # Check database pool configuration (non-destructive)
-      Gouda::FiberDatabaseSupport.check_pool_configuration
+      # Check Rails isolation level configuration
       Gouda::FiberDatabaseSupport.check_fiber_isolation_level
     end
 
