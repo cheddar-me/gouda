@@ -43,6 +43,8 @@ module Gouda
           Gouda.config.preserve_job_records = config_from_rails[:preserve_job_records]
           Gouda.config.polling_sleep_interval_seconds = config_from_rails[:polling_sleep_interval_seconds]
           Gouda.config.worker_thread_count = config_from_rails[:worker_thread_count]
+          Gouda.config.use_fiber_scheduler = config_from_rails[:use_fiber_scheduler]
+          Gouda.config.fibers_per_thread = config_from_rails[:fibers_per_thread]
         end
       else
         Gouda.config.preserve_job_records = false
