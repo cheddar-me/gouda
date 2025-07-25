@@ -135,7 +135,7 @@ module Gouda
         create_threaded_worker_threads(n_threads, worker_id, queue_constraint, executing_workload_ids, check_shutdown)
       end
 
-      run_housekeeping_loop(worker_id, executing_workload_ids, check_shutdown)
+      run_housekeeping_loop(executing_workload_ids, check_shutdown)
     ensure
       worker_threads&.map(&:join)
     end
@@ -229,7 +229,7 @@ module Gouda
         end
       end
 
-      def run_housekeeping_loop(worker_id, executing_workload_ids, check_shutdown)
+      def run_housekeeping_loop(executing_workload_ids, check_shutdown)
         loop do
           break if check_shutdown.call
 
@@ -240,7 +240,7 @@ module Gouda
               # even though the worker it was running on has failed for whatever reason.
               # Later on we can figure out what to do with those jobs (re-enqueue them or toss them)
               Gouda.suppressing_sql_logs do # these updates will also be very frequent with long-running jobs
-                Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(executing_on: worker_id, last_execution_heartbeat_at: Time.now.utc)
+                Gouda::Workload.where(id: executing_workload_ids.to_a, state: "executing").update_all(last_execution_heartbeat_at: Time.now.utc)
               end
 
               # Find jobs which just hung and clean them up (mark them as "finished" and enqueue replacement workloads if possible)
