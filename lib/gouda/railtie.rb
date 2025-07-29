@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "connection_managed_executor"
+
 module Gouda
   UNINITIALISED_DATABASE_EXCEPTIONS = [ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished]
 
@@ -16,10 +18,21 @@ module Gouda
     end
 
     initializer "gouda.configure_rails_initialization" do
-      Gouda.config.app_executor = if defined?(Rails) && Rails.respond_to?(:application)
+      # Configure the Rails executor for Gouda
+      base_executor = if defined?(Rails) && Rails.respond_to?(:application)
         Rails.application.executor
       else
         ActiveSupport::Executor
+      end
+      
+      # Conditionally wrap the executor based on configuration
+      if Gouda.config.prevent_connection_hoarding
+        # Wrap the executor to implement Rails 7.2+ connection management
+        # This prevents database connections from being held for the entire job duration
+        Gouda.config.app_executor = ConnectionManagedExecutor.new(base_executor)
+      else
+        # Use the plain executor without connection management
+        Gouda.config.app_executor = base_executor
       end
     end
 

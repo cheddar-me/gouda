@@ -25,6 +25,7 @@ module Gouda
     config_accessor(:polling_sleep_interval_seconds, default: 0.2)
     config_accessor(:worker_thread_count, default: 1)
     config_accessor(:app_executor)
+    config_accessor(:prevent_connection_hoarding, default: false)
     config_accessor(:cron, default: {})
     config_accessor(:enable_cron, default: true)
     # Deprecated logger configuration. This needs to be available in the
@@ -72,7 +73,7 @@ module Gouda
     # is just an ActiveJob adapter and the Workload is just an ActiveRecord, in the end.
     # So it should be up to the developer of the app, not to us, to set the logger up
     # and configure out. There are also gems such as "stackdriver" from Google which
-    # rather unceremonously overwrite the Rails logger with their own. If that happens,
+    # rather unceremoniously overwrite the Rails logger with their own. If that happens,
     # it is the choice of the user to do so - and we should honor that choice. Same for
     # the logging level - the Rails logger level must take precendence. Same for logger
     # broadcasts which get set up, for example, by the Rails console when you start it.
