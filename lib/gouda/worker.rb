@@ -263,13 +263,7 @@ module Gouda
           return if must_abort_proc.call
           return if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time_seconds >= n_seconds
 
-          if fiber_task
-            # Use fiber-based sleep that yields control to the scheduler
-            fiber_task.sleep(check_interval_seconds)
-          else
-            # Use regular thread sleep
-            sleep(check_interval_seconds)
-          end
+          sleep(check_interval_seconds)
         end
       end
     end
