@@ -2,6 +2,7 @@
 
 require "securerandom"
 require "gouda/version"
+require "async"
 
 module Gouda
   POLL_INTERVAL_DURATION_SECONDS = 1
@@ -167,10 +168,6 @@ module Gouda
       def create_hybrid_worker_threads(n_threads, fibers_per_thread, worker_id, queue_constraint, executing_workload_ids, check_shutdown)
         n_threads.times.map do |thread_index|
           Thread.new do
-            # Load the Async gem here to avoid dependency issues when not using fibers
-            require "async"
-            require "async/scheduler"
-
             # Each thread runs its own fiber scheduler
             Async do |task|
               # Create multiple fibers within this thread
