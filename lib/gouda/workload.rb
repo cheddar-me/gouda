@@ -239,4 +239,21 @@ class Gouda::Workload < ActiveRecord::Base
   def active_job_data
     serialized_params.deep_dup.merge("provider_job_id" => id, "interrupted_at" => interrupted_at, "scheduler_key" => scheduler_key) # TODO: is this memory-economical?
   end
+
+  # Returns true if this workload was executed using async execution (hybrid mode with fibers)
+  def uses_async_execution?
+    executing_on&.include?("fiber-")
+  end
+
+  # Returns true if this workload was executed on a thread
+  def executed_on_thread?
+    executing_on&.include?("thread-")
+  end
+
+  # Returns the execution context type (:fiber, :thread, or :unknown)
+  def execution_context
+    return :fiber if uses_async_execution?
+    return :thread if executed_on_thread?
+    :unknown
+  end
 end

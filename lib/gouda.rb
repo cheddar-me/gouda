@@ -32,6 +32,10 @@ module Gouda
     # that is using Gouda. The config values will be ignored though.
     config_accessor(:logger, default: nil)
     config_accessor(:log_level, default: nil)
+
+    # Fiber-specific configuration options
+    config_accessor(:fibers_per_thread, default: 1)  # Number of fibers per worker thread
+    config_accessor(:use_fiber_scheduler, default: false)
   end
 
   class InterruptError < StandardError
@@ -41,6 +45,11 @@ module Gouda
   end
 
   def self.start
+    start_with_scheduler_type
+  end
+
+  # Enhanced start method that chooses between thread and thread+fiber execution
+  def self.start_with_scheduler_type
     queue_constraint = if ENV["GOUDA_QUEUES"]
       Gouda.parse_queue_constraint(ENV["GOUDA_QUEUES"])
     else
@@ -48,9 +57,18 @@ module Gouda
     end
 
     logger.info("Gouda version: #{Gouda::VERSION}")
-    logger.info("Worker threads: #{Gouda.config.worker_thread_count}")
 
-    worker_loop(n_threads: Gouda.config.worker_thread_count, queue_constraint: queue_constraint)
+    # Determine execution parameters based on configuration
+    use_fibers = Gouda.config.use_fiber_scheduler
+    fibers_per_thread = use_fibers ? Gouda.config.fibers_per_thread : 1
+
+    # Single worker loop call that handles both execution modes
+    Worker.worker_loop(
+      n_threads: Gouda.config.worker_thread_count,
+      queue_constraint: queue_constraint,
+      use_fibers: use_fibers,
+      fibers_per_thread: fibers_per_thread
+    )
   end
 
   def self.config
@@ -72,7 +90,7 @@ module Gouda
     # is just an ActiveJob adapter and the Workload is just an ActiveRecord, in the end.
     # So it should be up to the developer of the app, not to us, to set the logger up
     # and configure out. There are also gems such as "stackdriver" from Google which
-    # rather unceremonously overwrite the Rails logger with their own. If that happens,
+    # rather unceremoniously overwrite the Rails logger with their own. If that happens,
     # it is the choice of the user to do so - and we should honor that choice. Same for
     # the logging level - the Rails logger level must take precendence. Same for logger
     # broadcasts which get set up, for example, by the Rails console when you start it.
@@ -137,6 +155,59 @@ module Gouda
       t.string :active_job_class_name, null: false
 
       t.timestamps
+    end
+  end
+
+  def self.setup_fiber_environment
+    # Check Rails isolation level configuration (non-destructive)
+    Gouda::FiberDatabaseSupport.check_fiber_isolation_level
+  end
+
+  # Database configuration helpers for fiber mode
+  module FiberDatabaseSupport
+    def self.check_fiber_isolation_level
+      return unless defined?(Rails) && Rails.respond_to?(:application) && Rails.application
+
+      begin
+        current_isolation = ActiveSupport.isolation_level
+
+        # Check if we're using PostgreSQL
+        using_postgresql = false
+        begin
+          if defined?(ActiveRecord::Base) && ActiveRecord::Base.connection.adapter_name == "PostgreSQL"
+            using_postgresql = true
+          end
+        rescue
+          # If we can't determine the adapter, assume we might be using PostgreSQL to be safe
+          using_postgresql = true
+        end
+
+        if current_isolation != :fiber && using_postgresql
+          logger.warn("=" * 80)
+          logger.warn("FIBER SCHEDULER CONFIGURATION WARNING")
+          logger.warn("=" * 80)
+          logger.warn("Gouda fiber mode is enabled with PostgreSQL but Rails isolation level is set to: #{current_isolation}")
+          logger.warn("For optimal fiber-based performance and to avoid potential issues with PostgreSQL,")
+          logger.warn("you should set the Rails isolation level to :fiber")
+          logger.warn("")
+          logger.warn("Add this to your config/application.rb:")
+          logger.warn("  config.active_support.isolation_level = :fiber")
+          logger.warn("")
+          logger.warn("This ensures ActiveRecord connection pools work correctly with fibers")
+          logger.warn("and PostgreSQL connections, and can prevent segfaults with Ruby 3.4+.")
+          logger.warn("=" * 80)
+        elsif current_isolation == :fiber
+          logger.info("Rails isolation level correctly set to :fiber for fiber-based execution")
+        elsif !using_postgresql
+          logger.info("Non-PostgreSQL database detected - isolation level configuration may not be required")
+        end
+      rescue => e
+        logger.warn("Could not check Rails isolation level: #{e.message}")
+      end
+    end
+
+    def self.logger
+      Gouda.logger
     end
   end
 end

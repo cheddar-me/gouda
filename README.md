@@ -72,7 +72,20 @@ to **prevent concurrent executions** but not to **limit the load on the system**
 
 ## Key concepts in Gouda: `executing_on`
 
-A `Workload` is executing on a particular `executing_on` entity - usually a worker thread. That entity gets a pseudorandom ID . The `executing_on` value can be used to see, for example, whether a particular worker thread has hung. If multiple jobs have a far-behind `updated_at` and are all `executing`, this likely means that the worker has crashed or hung. The value can also be used to build a table of currently running workers.
+A `Workload` is executing on a particular `executing_on` entity - usually a worker thread or fiber. That entity gets a pseudorandom ID. The `executing_on` value can be used to see, for example, whether a particular worker thread has hung. If multiple jobs have a far-behind `updated_at` and are all `executing`, this likely means that the worker executing them has died or has hung.
+
+The `executing_on` field now clearly indicates the execution context:
+- Thread-based execution: `hostname-pid-uuid-thread-abc123` 
+- Hybrid execution (threads + fibers): `hostname-pid-uuid-thread-abc123-fiber-def456`
+
+You can programmatically check the execution context:
+
+```ruby
+workload = Gouda::Workload.last
+workload.executed_on_thread?  # => true/false
+workload.uses_async_execution?  # => true/false  
+workload.execution_context    # => :thread, :fiber, or :unknown
+```
 
 ## Usage tips: bulkify your enqueues
 
@@ -103,7 +116,108 @@ User.transaction do
 end
 ```
 
+## Hybrid Execution: Threads + Fibers
+
+Gouda supports two execution modes: traditional thread-based execution and hybrid execution that combines multiple threads with multiple fibers per thread. The hybrid mode provides non-blocking IO capabilities while still utilizing multiple CPU cores.
+
+### Execution Modes
+
+**Thread-based execution (default):**
+- Multiple worker threads
+- One job per thread at a time
+- Simple and reliable
+- Good for CPU-bound work
+
+**Hybrid execution (threads + fibers):**
+- Multiple worker threads, each containing multiple fibers
+- Much higher concurrency (threads × fibers per thread)
+- Non-blocking IO within each thread
+- Best of both worlds: CPU parallelism + IO concurrency
+
+### Requirements
+
+- Ruby 3.1+ with Fiber.scheduler support
+- `async` gem dependency (~> 2.25, automatically included)
+- **Rails isolation level set to `:fiber`** (critical for hybrid mode)
+- Async-compatible gems for full benefit
+
+### Critical Configuration for Hybrid Mode
+
+**⚠️ IMPORTANT**: When using hybrid execution **with PostgreSQL**, you **must** configure Rails to use fiber-based isolation:
+
+```ruby
+# config/application.rb
+class Application < Rails::Application
+  # This is REQUIRED for Gouda hybrid mode with PostgreSQL
+  config.active_support.isolation_level = :fiber
+end
+```
+
+**Why this matters for PostgreSQL:**
+- Prevents segmentation faults with Ruby 3.4+ and PostgreSQL adapter
+- Ensures ActiveRecord connection pools work correctly with fibers and PostgreSQL connections
+- Required for proper fiber-based concurrency with PostgreSQL's connection handling
+
+**Note**: This configuration is specifically required when using PostgreSQL. Other database adapters may not have the same requirement, but setting it to `:fiber` is generally safe and recommended when using Gouda's hybrid mode.
+
+Gouda will automatically detect if this setting is missing when using PostgreSQL and warn you during startup.
+
+### Configuration
+
+To enable hybrid execution (threads + fibers):
+
+```ruby
+Gouda.configure do |config|
+  # Enable hybrid scheduler (threads + fibers)
+  config.use_fiber_scheduler = true
+  
+  # Number of worker threads (should match your CPU cores)
+  config.worker_thread_count = 4
+  
+  # Number of fibers per thread (can be much higher)
+  config.fibers_per_thread = 10  # This means 10 fibers PER thread
+  
+  # Total concurrency = worker_thread_count × fibers_per_thread
+  # In this example: 4 threads × 10 fibers = 40 concurrent jobs
+end
+```
+
+**Traditional thread-based execution (default):**
+
+```ruby
+Gouda.configure do |config|
+  # Thread-based execution (default)
+  config.use_fiber_scheduler = false
+  
+  # Number of worker threads
+  config.worker_thread_count = 4  # Total concurrency = 4
+end
+```
+
+### Benefits
+
+- **Non-blocking IO**: Database queries, HTTP requests, and file operations don't block other jobs
+- **CPU parallelism**: Multiple threads utilize multiple CPU cores
+- **Higher concurrency**: Can handle many more concurrent jobs with less memory overhead than pure threading
+- **Better resource utilization**: Cooperative scheduling reduces context switching overhead
+- **Backward compatibility**: Thread-based mode remains the default and continues to work
+
+### When to use hybrid vs thread execution
+
+**Use hybrid execution (threads + fibers) for:**
+- IO-bound jobs (HTTP requests, database queries, file processing)
+- High-concurrency scenarios
+- Jobs that spend time waiting for external resources
+- Mixed workloads with both CPU and IO requirements
+
+**Use thread-based execution for:**
+- CPU-intensive jobs
+- Jobs that use gems without async support
+- Simpler deployment scenarios
+- When you want predictable, simple execution
+
+You can even run both modes simultaneously with different queue constraints to optimize for different job types.
+
 ## Web UI
 
 At the moment the Gouda UI is proprietary, so this gem only provides a "headless" implementation. We expect this to change in the future.
-
