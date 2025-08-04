@@ -1,3 +1,7 @@
+## [0.2.0]
+
+- Introduce fiber execution for workers
+
 ## [0.1.16]
 
 - Actualy suppress DEBUG level logs in `suppressing_sql_logs` :facepalm:
