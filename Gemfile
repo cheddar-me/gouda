@@ -7,3 +7,4 @@ gem "standard", require: false
 gem "rake", "~> 13.0"
 gem "minitest", "~> 5.0"
 gem "async", "~> 2.25"
+gem "csv" # Used to be in stdlib
