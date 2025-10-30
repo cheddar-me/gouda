@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "fugit", "~> 1.10"
   spec.add_dependency "async", "~> 2.25"
 
-  spec.add_development_dependency "standard"
+  # spec.add_development_dependency "standard"
   spec.add_development_dependency "pg"
   spec.add_development_dependency "debug"
   spec.add_development_dependency "pry"
