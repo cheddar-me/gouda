@@ -58,6 +58,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithEnqueueConcurrencyViaGoudaAndEnqueueLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(enqueue_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -66,6 +67,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithEnqueueConcurrencyViaGoudaAndTotalLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(total_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -84,6 +86,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithExecutionConcurrencyViaGoudaAndTotalLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(total_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -92,6 +95,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithExecutionConcurrencyViaGoudaAndPerformLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(perform_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"

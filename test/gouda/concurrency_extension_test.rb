@@ -4,6 +4,7 @@ require "gouda/test_helper"
 
 class GoudaConcurrencyExtensionTest < ActiveSupport::TestCase
   include AssertHelper
+
   class TestJobWithoutConcurrency < ActiveJob::Base
     self.queue_adapter = Gouda::Adapter.new
   end
@@ -11,6 +12,7 @@ class GoudaConcurrencyExtensionTest < ActiveSupport::TestCase
   class TestJobWithPerformConcurrency < ActiveJob::Base
     self.queue_adapter = Gouda::Adapter.new
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(perform_limit: 1)
 
     def perform(*args)
@@ -42,6 +44,7 @@ class GoudaConcurrencyExtensionTest < ActiveSupport::TestCase
   class TestJobWithCommonConcurrency < ActiveJob::Base
     self.queue_adapter = Gouda::Adapter.new
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(total_limit: 1)
 
     def perform(*args)
@@ -79,6 +82,7 @@ class GoudaConcurrencyExtensionTest < ActiveSupport::TestCase
   class TestJobWithEnqueueConcurrency < ActiveJob::Base
     self.queue_adapter = Gouda::Adapter.new
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(enqueue_limit: 1)
 
     def perform(*args)
@@ -105,6 +109,7 @@ class GoudaConcurrencyExtensionTest < ActiveSupport::TestCase
   class TestJobWithCustomKey < ActiveJob::Base
     self.queue_adapter = Gouda::Adapter.new
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with total_limit: 1, key: "42"
   end
 
@@ -117,6 +122,7 @@ class GoudaConcurrencyExtensionTest < ActiveSupport::TestCase
   class TestJobWithCustomKeyProc < ActiveJob::Base
     self.queue_adapter = Gouda::Adapter.new
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with total_limit: 1, key: -> { @ivar }
 
     def initialize(...)
