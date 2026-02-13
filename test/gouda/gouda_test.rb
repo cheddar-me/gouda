@@ -384,6 +384,29 @@ class GoudaTest < ActiveSupport::TestCase
     end
   end
 
+  test "resets the bulk buffer thread local when the block raises" do
+    assert_raises(RuntimeError) do
+      Gouda.in_bulk do
+        raise "boom"
+      end
+    end
+    assert_nil Thread.current[:gouda_bulk_buffer], "The bulk buffer thread local must be reset after an exception"
+  end
+
+  test "enqueues jobs normally after a failed in_bulk block" do
+    assert_raises(RuntimeError) do
+      Gouda.in_bulk do
+        StandardJob.perform_later
+        raise "boom"
+      end
+    end
+
+    # Jobs enqueued after the failed bulk block should still be enqueued normally
+    assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
+      StandardJob.perform_later
+    end
+  end
+
   test "sets the correct queue with perform_later" do
     assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
       HeavyJob.perform_later
