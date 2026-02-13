@@ -18,7 +18,8 @@ module Gouda
   #    end
   # @return [Object] the return value of the block
   def self.in_bulk(&blk)
-    if Thread.current[:gouda_bulk_buffer].nil?
+    outermost = Thread.current[:gouda_bulk_buffer].nil?
+    if outermost
       Thread.current[:gouda_bulk_buffer] = []
       retval = yield
       buf, Thread.current[:gouda_bulk_buffer] = Thread.current[:gouda_bulk_buffer], nil
@@ -27,6 +28,8 @@ module Gouda
     else # There already is an open bulk
       yield
     end
+  ensure
+    Thread.current[:gouda_bulk_buffer] = nil if outermost
   end
 
   # This method exists in edge Rails so probably can be replaced later:

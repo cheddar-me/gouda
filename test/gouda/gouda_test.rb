@@ -58,6 +58,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithEnqueueConcurrencyViaGoudaAndEnqueueLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(enqueue_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -66,6 +67,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithEnqueueConcurrencyViaGoudaAndTotalLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(total_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -84,6 +86,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithExecutionConcurrencyViaGoudaAndTotalLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(total_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -92,6 +95,7 @@ class GoudaTest < ActiveSupport::TestCase
 
   class JobWithExecutionConcurrencyViaGoudaAndPerformLimit < GoudaTestJob
     include Gouda::ActiveJobExtensions::Concurrency
+
     gouda_control_concurrency_with(perform_limit: 1, key: -> { self.class.to_s })
     def perform
       "perform result of #{self.class}"
@@ -381,6 +385,29 @@ class GoudaTest < ActiveSupport::TestCase
           end
         end
       end
+    end
+  end
+
+  test "resets the bulk buffer thread local when the block raises" do
+    assert_raises(RuntimeError) do
+      Gouda.in_bulk do
+        raise "boom"
+      end
+    end
+    assert_nil Thread.current[:gouda_bulk_buffer], "The bulk buffer thread local must be reset after an exception"
+  end
+
+  test "enqueues jobs normally after a failed in_bulk block" do
+    assert_raises(RuntimeError) do
+      Gouda.in_bulk do
+        StandardJob.perform_later
+        raise "boom"
+      end
+    end
+
+    # Jobs enqueued after the failed bulk block should still be enqueued normally
+    assert_changes_by(-> { Gouda::Workload.count }, exactly: 1) do
+      StandardJob.perform_later
     end
   end
 

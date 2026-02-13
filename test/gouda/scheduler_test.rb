@@ -19,6 +19,7 @@ class GoudaSchedulerTest < ActiveSupport::TestCase
 
   class FailingJob < ActiveJob::Base
     include Gouda::ActiveJobExtensions::Concurrency
+
     self.queue_adapter = Gouda::Adapter.new
 
     class MegaError < StandardError
