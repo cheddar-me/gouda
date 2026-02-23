@@ -1,3 +1,7 @@
+## [0.2.1]
+
+- Fix a potential memory leak in `in_bulk`. Thanks to Julik.
+
 ## [0.2.0]
 
 - Introduce fiber execution for workers
